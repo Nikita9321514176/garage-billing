@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:fragment="layout(content)">
+
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>GarageBilling</title>
+
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"/>
+    <link rel="stylesheet" th:href="@{/css/style.css}"/>
+</head>
+
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark px-3">
+    <a class="navbar-brand fw-bold" th:href="@{/dashboard}">
+        <i class="bi bi-tools me-2"></i>GarageBilling
+    </a>
+
+    <button class="navbar-toggler" type="button"
+            data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="navbarNav">
+
+        <ul class="navbar-nav ms-auto">
+
+            <li class="nav-item">
+                <a class="nav-link" th:href="@{/dashboard}">
+                    <i class="bi bi-speedometer2 me-1"></i>Dashboard
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link" th:href="@{/bill/new}">
+                    <i class="bi bi-file-earmark-plus me-1"></i>New Bill
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link" th:href="@{/car/search}">
+                    <i class="bi bi-search me-1"></i>Search Car
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link" th:href="@{/customer/list}">
+                    <i class="bi bi-people me-1"></i>Customers
+                </a>
+            </li>
+
+            <!-- PAYMENTS NAV LINK -->
+            <li class="nav-item">
+                <a class="nav-link" th:href="@{/payment/tracking}">
+                    <i class="bi bi-cash-stack me-1"></i>Payments
+                </a>
+            </li>
+
+            <!-- REMINDERS NAV LINK WITH LIVE BADGE -->
+            <li class="nav-item">
+                <!--
+                    The bell icon gets a red badge showing
+                    pending reminder count.
+                    pendingReminders is expected in the model.
+                -->
+                <a class="nav-link position-relative"
+                   th:href="@{/reminder/list}">
+                    <i class="bi bi-bell me-1"></i>Reminders
+
+                    <span class="position-absolute top-0 start-100
+                                 translate-middle badge rounded-pill
+                                 bg-danger"
+                          style="font-size:9px"
+                          th:if="${pendingReminders != null
+                                   and !#lists.isEmpty(pendingReminders)}">
+
+                        <span th:text="${#lists.size(pendingReminders)}">0</span>
+
+                    </span>
+                </a>
+            </li>
+
+            <!--
+                LOGOUT BUTTON
+                Logout MUST be POST request for security.
+                Spring Security automatically injects CSRF token
+                because we are using th:action.
+            -->
+            <li class="nav-item d-flex align-items-center ms-lg-2">
+                <form th:action="@{/logout}" method="post"
+                      class="d-inline m-0">
+
+                    <button type="submit"
+                            class="btn btn-outline-light btn-sm">
+
+                        <i class="bi bi-box-arrow-right me-1"></i>Logout
+
+                    </button>
+
+                </form>
+            </li>
+
+        </ul>
+
+    </div>
+</nav>
+
+<!-- FLASH MESSAGES -->
+<div class="container mt-3">
+
+    <div th:if="${successMessage}"
+         class="alert alert-success alert-dismissible fade show"
+         role="alert">
+
+        <i class="bi bi-check-circle me-2"></i>
+
+        <span th:text="${successMessage}"></span>
+
+        <button type="button"
+                class="btn-close"
+                data-bs-dismiss="alert">
+        </button>
+
+    </div>
+
+    <div th:if="${errorMessage}"
+         class="alert alert-danger alert-dismissible fade show"
+         role="alert">
+
+        <i class="bi bi-exclamation-circle me-2"></i>
+
+        <span th:text="${errorMessage}"></span>
+
+        <button type="button"
+                class="btn-close"
+                data-bs-dismiss="alert">
+        </button>
+
+    </div>
+
+</div>
+
+<!-- PAGE CONTENT -->
+<main class="container my-4">
+    <th:block th:replace="${content}"/>
+</main>
+
+<footer class="bg-dark text-white text-center py-3 mt-5">
+    <small>GarageBilling System &copy; 2024</small>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script th:src="@{/js/bill.js}"></script>
+
+</body>
+</html>

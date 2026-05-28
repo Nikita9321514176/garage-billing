@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body th:replace="~{layout/base :: layout(~{::content})}">
+<th:block th:fragment="content">
+
+<div class="page-header">
+    <h2>
+        <i class="bi bi-receipt me-2 text-primary"></i>
+        Bill: <span th:text="${bill.billNumber}">—</span>
+    </h2>
+
+    <div class="d-flex gap-2">
+
+        <!-- DOWNLOAD PDF BUTTON -->
+        <a th:href="@{/bill/{id}/pdf(id=${bill.id})}"
+           class="btn btn-outline-danger btn-sm">
+            <i class="bi bi-file-pdf me-1"></i>Download PDF
+        </a>
+
+        <a th:href="@{/dashboard}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i>Dashboard
+        </a>
+
+    </div>
+</div>
+
+<div class="row g-4">
+
+    <!-- ════════════ LEFT — Bill Details ════════════ -->
+    <div class="col-lg-8">
+
+        <!-- Bill Info -->
+        <div class="card mb-3">
+            <div class="card-header bg-primary text-white">
+                <i class="bi bi-info-circle me-2"></i>Bill Information
+            </div>
+
+            <div class="card-body">
+
+                <div class="row">
+
+                    <div class="col-md-6">
+
+                        <table class="table table-borderless table-sm mb-0">
+
+                            <tr>
+                                <td class="text-muted">Bill No.</td>
+                                <td>
+                                    <strong th:text="${bill.billNumber}">—</strong>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td class="text-muted">Date</td>
+                                <td th:text="${bill.billDate != null ?
+                                    #temporals.format(bill.billDate,
+                                    'dd MMM yyyy, hh:mm a') : 'N/A'}">—</td>
+                            </tr>
+
+                            <tr>
+                                <td class="text-muted">Due Date</td>
+                                <td th:text="${bill.dueDate != null ?
+                                    #temporals.format(bill.dueDate,
+                                    'dd MMM yyyy') : 'Not set'}">—</td>
+                            </tr>
+
+                            <tr>
+                                <td class="text-muted">Status</td>
+
+                                <td>
+
+                                    <th:block th:with="st=${bill.paymentStatus}">
+
+                                        <span th:if="${st == 'PAID'}"
+                                              class="badge badge-paid">
+                                            PAID
+                                        </span>
+
+                                        <span th:if="${st == 'PARTIAL'}"
+                                              class="badge badge-partial">
+                                            PARTIAL
+                                        </span>
+
+                                        <span th:if="${st == 'PENDING'}"
+                                              class="badge badge-pending">
+                                            PENDING
+                                        </span>
+
+                                    </th:block>
+
+                                </td>
+
+                            </tr>
+
+                        </table>
+
+                    </div>
+
+                    <div class="col-md-6">
+
+                        <table class="table table-borderless table-sm mb-0">
+
+                            <tr>
+                                <td class="text-muted">Customer</td>
+                                <td th:text="${bill.customerName}">—</td>
+                            </tr>
+
+                            <tr>
+                                <td class="text-muted">Phone</td>
+
+                                <td>
+                                    <a th:href="'tel:' + ${bill.customerPhone}"
+                                       th:text="${bill.customerPhone}">—</a>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td class="text-muted">Car No.</td>
+
+                                <td>
+                                    <span class="car-number-plate"
+                                          th:text="${bill.carNumber}">—</span>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td class="text-muted">Model</td>
+                                <td th:text="${bill.carModel}">—</td>
+                            </tr>
+
+                        </table>
+
+                    </div>
+
+                </div>
+
+                <div th:if="${bill.notes != null and !bill.notes.isEmpty()}"
+                     class="mt-2 pt-2 border-top">
+
+                    <small class="text-muted">Notes: </small>
+
+                    <small th:text="${bill.notes}">—</small>
+
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Services Table -->
+        <div class="card mb-3">
+
+            <div class="card-header bg-dark text-white">
+                <i class="bi bi-tools me-2"></i>Services Performed
+            </div>
+
+            <div class="card-body p-0">
+
+                <table class="table mb-0">
+
+                    <thead>
+
+                        <tr>
+                            <th>#</th>
+                            <th>Service</th>
+                            <th>Description</th>
+                            <th class="text-end">Amount</th>
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                        <tr th:each="svc, i : ${bill.services}">
+
+                            <td class="text-muted"
+                                th:text="${i.count}">1</td>
+
+                            <td th:text="${svc.serviceName}">—</td>
+
+                            <td class="text-muted"
+                                th:text="${svc.description != null
+                                    and !svc.description.isEmpty()
+                                    ? svc.description : '—'}">—</td>
+
+                            <td class="text-end">
+
+                                &#8377;<span th:text="${#numbers.formatDecimal(
+                                    svc.amount, 1, 'COMMA', 2, 'POINT')}">0.00</span>
+
+                            </td>
+
+                        </tr>
+
+                        <tr th:if="${bill.services == null
+                                    or #lists.isEmpty(bill.services)}">
+
+                            <td colspan="4"
+                                class="text-center text-muted py-3">
+
+                                No services found
+
+                            </td>
+
+                        </tr>
+
+                    </tbody>
+
+                    <tfoot class="table-light">
+
+                        <tr>
+
+                            <td colspan="3"
+                                class="text-end fw-bold">
+                                Total
+                            </td>
+
+                            <td class="text-end fw-bold text-primary">
+
+                                &#8377;<span th:text="${#numbers.formatDecimal(
+                                    bill.totalAmount, 1, 'COMMA', 2, 'POINT')}">0.00</span>
+
+                            </td>
+
+                        </tr>
+
+                    </tfoot>
+
+                </table>
+
+            </div>
+        </div>
+
+        <!-- Payment History -->
+        <div class="card">
+
+            <div class="card-header bg-success text-white">
+                <i class="bi bi-cash-coin me-2"></i>Payment History
+            </div>
+
+            <div class="card-body p-0">
+
+                <table class="table mb-0">
+
+                    <thead>
+
+                        <tr>
+                            <th>Date</th>
+                            <th>Mode</th>
+                            <th>Reference</th>
+                            <th class="text-end">Amount Paid</th>
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                        <tr th:each="pmt : ${payments}">
+
+                            <td th:text="${pmt.paymentDate != null ?
+                                #temporals.format(pmt.paymentDate,
+                                'dd MMM yyyy') : 'N/A'}">—</td>
+
+                            <td>
+
+                                <span class="badge bg-secondary"
+                                      th:text="${pmt.paymentMode}">
+
+                                    CASH
+
+                                </span>
+
+                            </td>
+
+                            <td class="text-muted"
+                                th:text="${pmt.transactionReference != null
+                                    and !pmt.transactionReference.isEmpty()
+                                    ? pmt.transactionReference : '—'}">—</td>
+
+                            <td class="text-end text-success fw-semibold">
+
+                                &#8377;<span th:text="${#numbers.formatDecimal(
+                                    pmt.amountPaid, 1, 'COMMA', 2, 'POINT')}">0.00</span>
+
+                            </td>
+
+                        </tr>
+
+                        <tr th:if="${payments == null or #lists.isEmpty(payments)}">
+
+                            <td colspan="4"
+                                class="text-center text-muted py-3">
+
+                                No payments recorded yet
+
+                            </td>
+
+                        </tr>
+
+                    </tbody>
+
+                </table>
+
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ════════════ RIGHT — Summary + Record Payment ════════════ -->
+    <div class="col-lg-4">
+
+        <!-- Payment Summary -->
+        <div class="card mb-3">
+
+            <div class="card-header bg-dark text-white">
+                <i class="bi bi-calculator me-2"></i>Payment Summary
+            </div>
+
+            <div class="card-body">
+
+                <div class="d-flex justify-content-between mb-2">
+
+                    <span class="text-muted">Total Bill</span>
+
+                    <strong>
+                        &#8377;<span th:text="${#numbers.formatDecimal(
+                            bill.totalAmount, 1, 'COMMA', 2, 'POINT')}">0</span>
+                    </strong>
+
+                </div>
+
+                <div class="d-flex justify-content-between mb-2">
+
+                    <span class="text-muted">Amount Paid</span>
+
+                    <span class="text-success fw-semibold">
+
+                        &#8377;<span th:text="${#numbers.formatDecimal(
+                            bill.paidAmount, 1, 'COMMA', 2, 'POINT')}">0</span>
+
+                    </span>
+
+                </div>
+
+                <hr/>
+
+                <div class="d-flex justify-content-between align-items-center">
+
+                    <span class="fw-bold">Balance Due</span>
+
+                    <span class="fw-bold fs-5 text-danger"
+                          th:classappend="${bill.balanceAmount != null
+                              and bill.balanceAmount.compareTo(
+                                  T(java.math.BigDecimal).ZERO) <= 0}
+                              ? 'text-success' : 'text-danger'">
+
+                        &#8377;<span th:text="${#numbers.formatDecimal(
+                            bill.balanceAmount, 1, 'COMMA', 2, 'POINT')}">0</span>
+
+                    </span>
+
+                </div>
+
+            </div>
+        </div>
+
+        <!-- RECORD PAYMENT -->
+        <div class="card mb-3"
+             th:if="${bill.paymentStatus == 'PENDING'
+                     or bill.paymentStatus == 'PARTIAL'}">
+
+            <div class="card-header bg-warning text-dark">
+                <i class="bi bi-plus-circle me-2"></i>Record Payment
+            </div>
+
+            <div class="card-body">
+
+                <!--
+                    IMPORTANT:
+                    th:action is REQUIRED for Spring Security CSRF token.
+                    Without this you get 403 Forbidden.
+                -->
+                <form th:action="@{/payment/save}" method="post">
+
+                    <!-- Hidden bill ID -->
+                    <input type="hidden"
+                           name="billId"
+                           th:value="${bill.id}"/>
+
+                    <div class="mb-3">
+
+                        <label class="form-label fw-semibold">
+                            Amount <span class="text-danger">*</span>
+                        </label>
+
+                        <div class="input-group">
+
+                            <span class="input-group-text">&#8377;</span>
+
+                            <input type="number"
+                                   name="amountPaid"
+                                   class="form-control"
+                                   placeholder="0.00"
+                                   min="0.01"
+                                   step="0.01"
+                                   required/>
+
+                        </div>
+
+                        <div class="form-text">
+
+                            Balance due:
+                            &#8377;<span th:text="${#numbers.formatDecimal(
+                                bill.balanceAmount, 1, 'COMMA', 2, 'POINT')}">0</span>
+
+                        </div>
+
+                    </div>
+
+                    <div class="mb-3">
+
+                        <label class="form-label fw-semibold">
+                            Payment Mode <span class="text-danger">*</span>
+                        </label>
+
+                        <select name="paymentMode"
+                                class="form-select"
+                                required>
+
+                            <option value="CASH">Cash</option>
+                            <option value="UPI">UPI</option>
+                            <option value="CARD">Card</option>
+                            <option value="BANK_TRANSFER">Bank Transfer</option>
+                            <option value="CHEQUE">Cheque</option>
+
+                        </select>
+
+                    </div>
+
+                    <div class="mb-3">
+
+                        <label class="form-label">
+                            Transaction Reference
+                        </label>
+
+                        <input type="text"
+                               name="transactionReference"
+                               class="form-control form-control-sm"
+                               placeholder="UPI ref / Cheque no. (optional)"/>
+
+                    </div>
+
+                    <div class="mb-3">
+
+                        <label class="form-label">Notes</label>
+
+                        <input type="text"
+                               name="notes"
+                               class="form-control form-control-sm"
+                               placeholder="Optional notes"/>
+
+                    </div>
+
+                    <div class="d-grid">
+
+                        <button type="submit"
+                                class="btn btn-warning fw-semibold">
+
+                            <i class="bi bi-cash me-1"></i>
+                            Record Payment
+
+                        </button>
+
+                    </div>
+
+                </form>
+
+            </div>
+        </div>
+
+        <!-- Fully paid -->
+        <div class="card mb-3"
+             th:if="${bill.paymentStatus == 'PAID'}">
+
+            <div class="card-body text-center py-4">
+
+                <i class="bi bi-check-circle-fill
+                          text-success fs-1 d-block mb-2"></i>
+
+                <strong class="text-success">
+                    Fully Paid
+                </strong>
+
+                <p class="text-muted small mt-1 mb-0">
+                    This bill has been paid in full.
+                </p>
+
+            </div>
+
+        </div>
+
+        <!-- WHATSAPP CARD -->
+        <div class="card mt-3">
+
+            <div class="card-header"
+                 style="background:#25D366;color:#fff">
+
+                <i class="bi bi-whatsapp me-2"></i>
+                WhatsApp
+
+            </div>
+
+            <div class="card-body">
+
+                <!-- MAIN BUTTON -->
+                <div class="d-grid mb-2">
+
+                    <a th:href="@{/whatsapp/send(billId=${bill.id})}"
+                       class="btn btn-success">
+
+                        <i class="bi bi-whatsapp me-2"></i>
+                        Send Bill on WhatsApp
+
+                    </a>
+
+                </div>
+
+                <!-- QUICK SEND -->
+                <div class="d-grid">
+
+                    <a th:href="${'https://wa.me/91'
+                                 + (bill.customerPhone != null
+                                     ? bill.customerPhone
+                                         .replaceAll('[^0-9]','')
+                                     : '')
+                                 + '?text=Dear+'
+                                 + (bill.customerName != null
+                                     ? bill.customerName
+                                         .replace(' ','+')
+                                     : 'Customer')
+                                 + ',+your+bill+'
+                                 + bill.billNumber
+                                 + '+of+Rs.'
+                                 + bill.totalAmount
+                                 + '+is+ready.+Balance+Rs.'
+                                 + bill.balanceAmount
+                                 + '.+Thank+you!+-+GarageBilling'}"
+
+                       target="_blank"
+                       class="btn btn-outline-success btn-sm">
+
+                        <i class="bi bi-lightning me-1"></i>
+                        Quick Send (no preview)
+
+                    </a>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+</th:block>
+</body>
+</html>

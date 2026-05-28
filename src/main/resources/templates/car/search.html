@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body th:replace="~{layout/base :: layout(~{::content})}">
+<th:block th:fragment="content">
+
+<!-- PAGE HEADER -->
+<div class="page-header">
+    <h2>
+        <i class="bi bi-search me-2 text-info"></i>
+        Search Car History
+    </h2>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SEARCH BOX
+     method="get" keeps the search term in the URL
+     so the page is bookmarkable and shareable.
+══════════════════════════════════════════════ -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form th:action="@{/car/search}" method="get">
+            <div class="row g-2 align-items-end">
+
+                <div class="col-md-8">
+                    <label class="form-label fw-semibold">
+                        Enter Car Number Plate
+                    </label>
+
+                    <input type="text"
+                           name="carNumber"
+                           class="form-control form-control-lg car-number-plate"
+                           placeholder="e.g. MH12AB1234"
+                           th:value="${searchCarNumber}"
+                           style="text-transform:uppercase;letter-spacing:2px"
+                           oninput="this.value=this.value.toUpperCase()"
+                           autofocus
+                           autocomplete="off"/>
+                </div>
+
+                <div class="col-md-4">
+                    <button type="submit"
+                            class="btn btn-info btn-lg w-100">
+                        <i class="bi bi-search me-2"></i>Search
+                    </button>
+                </div>
+
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     NOT FOUND MESSAGE
+══════════════════════════════════════════════ -->
+<div th:if="${notFound}" class="alert alert-warning">
+
+    <i class="bi bi-exclamation-triangle me-2"></i>
+
+    No car found with number plate
+    <strong th:text="${searchCarNumber}">—</strong>.
+
+    <a th:href="@{/car/new}" class="alert-link ms-2">
+        Register this car
+    </a>
+
+</div>
+
+<!-- ══════════════════════════════════════════════
+     RESULTS — only shown when car is found
+══════════════════════════════════════════════ -->
+<div th:if="${car}">
+
+    <!-- ── ROW 1: 4 Stat Cards ──────────────────── -->
+    <div class="row g-3 mb-4">
+
+        <div class="col-6 col-md-3">
+            <div class="stat-card border-primary">
+                <div class="stat-label">Total Bills</div>
+                <div class="stat-value text-primary"
+                     th:text="${billCount}">0</div>
+            </div>
+        </div>
+
+        <div class="col-6 col-md-3">
+            <div class="stat-card border-success">
+                <div class="stat-label">Total Earned</div>
+                <div class="stat-value text-success">
+                    &#8377;<span th:text="${#numbers.formatDecimal(
+                        totalEarned, 1, 'COMMA', 0, 'POINT')}">0</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-md-3">
+            <div class="stat-card border-warning">
+                <div class="stat-label">Pending</div>
+                <div class="stat-value text-warning">
+                    &#8377;<span th:text="${#numbers.formatDecimal(
+                        totalPending, 1, 'COMMA', 0, 'POINT')}">0</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-md-3">
+            <div class="stat-card"
+                 style="border-left:4px solid #534AB7">
+
+                <div class="stat-label">Last Visit</div>
+
+                <div class="stat-value"
+                     style="color:#534AB7;font-size:1rem">
+
+                    <span th:if="${lastVisit != null}"
+                          th:text="${#temporals.format(
+                              lastVisit,
+                              'dd MMM yyyy')}">—</span>
+
+                    <span th:if="${lastVisit == null}"
+                          class="text-muted">
+                        No visits yet
+                    </span>
+
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ── ROW 2: Car Info + History ────────────── -->
+    <div class="row g-3">
+
+        <!-- LEFT: Car + Customer info -->
+        <div class="col-lg-4">
+
+            <!-- Car Details -->
+            <div class="card mb-3">
+
+                <div class="card-header bg-info text-white">
+                    <i class="bi bi-car-front me-2"></i>Car Details
+                </div>
+
+                <div class="card-body p-0">
+
+                    <table class="table table-borderless table-sm mb-0">
+
+                        <tr>
+                            <td class="text-muted ps-3">Number</td>
+                            <td class="pe-3">
+                                <span class="car-number-plate"
+                                      th:text="${car.carNumber}">—</span>
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td class="text-muted ps-3">Model</td>
+                            <td th:text="${car.carModel}">—</td>
+                        </tr>
+
+                        <tr>
+                            <td class="text-muted ps-3">Brand</td>
+                            <td th:text="${car.brand ?: '—'}">—</td>
+                        </tr>
+
+                        <tr>
+                            <td class="text-muted ps-3">Year</td>
+                            <td th:text="${car.manufactureYear ?: '—'}">—</td>
+                        </tr>
+
+                        <tr>
+                            <td class="text-muted ps-3">Color</td>
+                            <td th:text="${car.color ?: '—'}">—</td>
+                        </tr>
+
+                    </table>
+
+                </div>
+            </div>
+
+            <!-- Owner Details -->
+            <div class="card mb-3"
+                 th:if="${customer != null}">
+
+                <div class="card-header bg-primary text-white">
+                    <i class="bi bi-person me-2"></i>Owner Details
+                </div>
+
+                <div class="card-body p-0">
+
+                    <table class="table table-borderless table-sm mb-0">
+
+                        <tr>
+                            <td class="text-muted ps-3">Name</td>
+                            <td class="fw-semibold pe-3"
+                                th:text="${customer.name}">—</td>
+                        </tr>
+
+                        <tr>
+                            <td class="text-muted ps-3">Phone</td>
+                            <td>
+                                <a th:href="'tel:' + ${customer.phone}"
+                                   th:text="${customer.phone}"
+                                   class="text-decoration-none">—</a>
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td class="text-muted ps-3">Email</td>
+                            <td class="pe-3"
+                                th:text="${customer.email ?: '—'}">—</td>
+                        </tr>
+
+                    </table>
+
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="d-grid gap-2">
+
+                <a th:href="@{/bill/new(
+                                carId=${car.id},
+                                customerId=${car.customerId})}"
+                   class="btn btn-primary">
+
+                    <i class="bi bi-file-earmark-plus me-2"></i>
+                    New Bill for this Car
+
+                </a>
+
+                <a th:href="@{/customer/{id}(id=${car.customerId})}"
+                   class="btn btn-outline-secondary">
+
+                    <i class="bi bi-person me-2"></i>
+                    View Customer Profile
+
+                </a>
+
+            </div>
+
+        </div>
+
+        <!-- RIGHT: Complete Bill History -->
+        <div class="col-lg-8">
+
+            <div class="card">
+
+                <div class="card-header bg-dark text-white
+                            d-flex justify-content-between align-items-center">
+
+                    <span>
+                        <i class="bi bi-clock-history me-2"></i>
+                        Complete Service History
+                    </span>
+
+                    <span class="badge bg-secondary"
+                          th:text="${billCount} + ' bills'">0</span>
+
+                </div>
+
+                <!-- BILL LOOP -->
+                <div th:each="bill, billIdx : ${billHistory}">
+
+                    <!-- Bill header row -->
+                    <div class="p-3 border-bottom">
+
+                        <div class="d-flex justify-content-between
+                                    align-items-start mb-2">
+
+                            <div>
+
+                                <a th:href="@{/bill/{id}(id=${bill.id})}"
+                                   class="fw-bold text-decoration-none"
+                                   th:text="${bill.billNumber}">—</a>
+
+                                <div class="small text-muted mt-1">
+                                    <i class="bi bi-calendar2 me-1"></i>
+
+                                    <span th:text="${bill.billDate != null ?
+                                        #temporals.format(
+                                            bill.billDate,
+                                            'dd MMM yyyy, hh:mm a'
+                                        ) : '—'}">—</span>
+                                </div>
+
+                                <div class="small text-muted"
+                                     th:if="${bill.dueDate != null}">
+
+                                    <i class="bi bi-calendar-check me-1"></i>
+
+                                    Due:
+                                    <span th:text="${#temporals.format(
+                                        bill.dueDate,
+                                        'dd MMM yyyy')}">—</span>
+
+                                </div>
+
+                            </div>
+
+                            <div class="text-end">
+
+                                <th:block th:with="st=${bill.paymentStatus}">
+
+                                    <span th:if="${st == 'PAID'}"
+                                          class="badge badge-paid">
+                                        PAID
+                                    </span>
+
+                                    <span th:if="${st == 'PARTIAL'}"
+                                          class="badge badge-partial">
+                                        PARTIAL
+                                    </span>
+
+                                    <span th:if="${st == 'PENDING'}"
+                                          class="badge badge-pending">
+                                        PENDING
+                                    </span>
+
+                                </th:block>
+
+                            </div>
+
+                        </div>
+
+                        <!-- Services mini-table -->
+                        <div class="table-responsive mb-2">
+
+                            <table class="table table-sm mb-0"
+                                   style="font-size:12px">
+
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Service</th>
+                                        <th>Description</th>
+                                        <th class="text-end">Amount</th>
+                                    </tr>
+                                </thead>
+
+                                <tbody>
+
+                                    <tr th:each="svc, i : ${bill.services}">
+
+                                        <td class="text-muted"
+                                            th:text="${i.count}">1</td>
+
+                                        <td th:text="${svc.serviceName}">—</td>
+
+                                        <td class="text-muted"
+                                            th:text="${svc.description != null
+                                                and !svc.description.isEmpty()
+                                                ? svc.description : '—'}">—</td>
+
+                                        <td class="text-end fw-semibold">
+                                            &#8377;<span th:text="${#numbers.formatDecimal(
+                                                svc.amount,
+                                                1,
+                                                'COMMA',
+                                                2,
+                                                'POINT')}">0</span>
+                                        </td>
+
+                                    </tr>
+
+                                    <tr th:if="${bill.services == null
+                                                or #lists.isEmpty(
+                                                    bill.services)}">
+
+                                        <td colspan="4"
+                                            class="text-muted text-center py-2">
+
+                                            No services recorded
+
+                                        </td>
+
+                                    </tr>
+
+                                </tbody>
+
+                            </table>
+
+                        </div>
+
+                        <!-- Bill totals row -->
+                        <div class="d-flex flex-wrap gap-3
+                                    align-items-center
+                                    pt-2 border-top">
+
+                            <div>
+                                <small class="text-muted">Total</small>
+
+                                <div class="fw-bold">
+                                    &#8377;<span th:text="${#numbers.formatDecimal(
+                                        bill.totalAmount,
+                                        1,
+                                        'COMMA',
+                                        2,
+                                        'POINT')}">0</span>
+                                </div>
+                            </div>
+
+                            <div>
+                                <small class="text-muted">Paid</small>
+
+                                <div class="fw-semibold text-success">
+                                    &#8377;<span th:text="${#numbers.formatDecimal(
+                                        bill.paidAmount,
+                                        1,
+                                        'COMMA',
+                                        2,
+                                        'POINT')}">0</span>
+                                </div>
+                            </div>
+
+                            <div>
+                                <small class="text-muted">Balance</small>
+
+                                <div class="fw-semibold"
+                                     th:classappend="${bill.balanceAmount != null
+                                         and bill.balanceAmount.compareTo(
+                                             T(java.math.BigDecimal).ZERO) > 0}
+                                         ? 'text-danger'
+                                         : 'text-success'">
+
+                                    &#8377;<span th:text="${#numbers.formatDecimal(
+                                        bill.balanceAmount,
+                                        1,
+                                        'COMMA',
+                                        2,
+                                        'POINT')}">0</span>
+
+                                </div>
+                            </div>
+
+                            <!-- ACTION BUTTONS -->
+                            <div class="ms-auto">
+
+                                <!-- VIEW BILL -->
+                                <a th:href="@{/bill/{id}(id=${bill.id})}"
+                                   class="btn btn-sm btn-outline-primary">
+
+                                    <i class="bi bi-eye me-1"></i>
+                                    View Bill
+
+                                </a>
+
+                                <!-- PDF DOWNLOAD -->
+                                <a th:href="@{/bill/{id}/pdf(id=${bill.id})}"
+                                   class="btn btn-sm btn-outline-danger ms-1">
+
+                                    <i class="bi bi-file-pdf me-1"></i>
+                                    PDF
+
+                                </a>
+
+                            </div>
+
+                        </div>
+
+                    </div><!-- /bill block -->
+
+                </div><!-- /th:each -->
+
+                <!-- Empty state -->
+                <div th:if="${#lists.isEmpty(billHistory)}"
+                     class="text-center text-muted py-5">
+
+                    <i class="bi bi-receipt fs-1 d-block mb-2"></i>
+
+                    No bills for this car yet.
+
+                    <div class="mt-2">
+
+                        <a th:href="@{/bill/new(
+                                        carId=${car.id},
+                                        customerId=${car.customerId})}"
+                           class="btn btn-primary btn-sm">
+
+                            Create first bill
+
+                        </a>
+
+                    </div>
+
+                </div>
+
+            </div><!-- /card -->
+
+        </div><!-- /col -->
+
+    </div><!-- /row 2 -->
+
+</div><!-- /th:if car -->
+
+</th:block>
+</body>
+</html>

@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body th:replace="~{layout/base :: layout(~{::content})}">
+<th:block th:fragment="content">
+
+    <div class="page-header">
+
+        <h2>
+            <i class="bi bi-car-front me-2 text-success"></i>
+            Register New Car
+        </h2>
+
+        <a th:href="@{/customer/list}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back
+        </a>
+
+    </div>
+
+    <div class="row justify-content-center">
+
+        <div class="col-md-8">
+
+            <div class="card">
+
+                <div class="card-header bg-success text-white">
+                    <i class="bi bi-car-front me-2"></i>
+                    Car Details
+                </div>
+
+                <div class="card-body">
+
+                    <!--
+                        IMPORTANT:
+                        th:action is REQUIRED with Spring Security.
+
+                        Why?
+                        Spring Security protects all POST requests
+                        using CSRF tokens.
+
+                        When using th:action:
+                        Thymeleaf automatically injects hidden CSRF token.
+
+                        Without th:action:
+                        form submission gives 403 Forbidden error.
+                    -->
+                    <form th:action="@{/car/save}" method="post">
+
+                        <div class="row g-3">
+
+                            <!-- Customer Selector -->
+                            <div class="col-12">
+
+                                <label class="form-label" for="customerId">
+                                    Select Customer
+                                    <span class="text-danger">*</span>
+                                </label>
+
+                                <select id="customerId"
+                                        name="customerId"
+                                        class="form-select"
+                                        required>
+
+                                    <option value="">
+                                        -- Select Customer --
+                                    </option>
+
+                                    <option th:each="cust : ${customers}"
+                                            th:value="${cust.id}"
+                                            th:text="${cust.name + ' — ' + cust.phone}"
+                                            th:selected="${cust.id == preselectedCustomerId}">
+                                    </option>
+
+                                </select>
+
+                            </div>
+
+                            <!-- Car Number -->
+                            <div class="col-md-6">
+
+                                <label class="form-label" for="carNumber">
+                                    Car Number Plate
+                                    <span class="text-danger">*</span>
+                                </label>
+
+                                <input type="text"
+                                       id="carNumber"
+                                       name="carNumber"
+                                       class="form-control car-number-plate"
+                                       placeholder="MH12AB1234"
+                                       required
+                                       style="text-transform:uppercase"
+                                       oninput="this.value=this.value.toUpperCase()">
+
+                                <div class="form-text">
+                                    Will be stored in UPPERCASE
+                                </div>
+
+                            </div>
+
+                            <!-- Car Model -->
+                            <div class="col-md-6">
+
+                                <label class="form-label" for="carModel">
+                                    Car Model
+                                    <span class="text-danger">*</span>
+                                </label>
+
+                                <input type="text"
+                                       id="carModel"
+                                       name="carModel"
+                                       class="form-control"
+                                       placeholder="e.g. Swift, Innova, City"
+                                       required>
+
+                            </div>
+
+                            <!-- Brand -->
+                            <div class="col-md-4">
+
+                                <label class="form-label" for="brand">
+                                    Brand
+                                </label>
+
+                                <select id="brand"
+                                        name="brand"
+                                        class="form-select">
+
+                                    <option value="">
+                                        -- Select Brand --
+                                    </option>
+
+                                    <option>Maruti Suzuki</option>
+                                    <option>Toyota</option>
+                                    <option>Honda</option>
+                                    <option>Hyundai</option>
+                                    <option>Tata</option>
+                                    <option>Mahindra</option>
+                                    <option>Ford</option>
+                                    <option>Volkswagen</option>
+                                    <option>Kia</option>
+                                    <option>Renault</option>
+                                    <option>Nissan</option>
+                                    <option>Other</option>
+
+                                </select>
+
+                            </div>
+
+                            <!-- Manufacture Year -->
+                            <div class="col-md-4">
+
+                                <label class="form-label"
+                                       for="manufactureYear">
+
+                                    Year of Manufacture
+
+                                </label>
+
+                                <input type="number"
+                                       id="manufactureYear"
+                                       name="manufactureYear"
+                                       class="form-control"
+                                       placeholder="e.g. 2021"
+                                       min="1980"
+                                       max="2025">
+
+                            </div>
+
+                            <!-- Color -->
+                            <div class="col-md-4">
+
+                                <label class="form-label" for="color">
+                                    Color
+                                </label>
+
+                                <input type="text"
+                                       id="color"
+                                       name="color"
+                                       class="form-control"
+                                       placeholder="e.g. White, Black, Silver">
+
+                            </div>
+
+                        </div><!-- /row -->
+
+                        <hr class="my-4">
+
+                        <!-- Buttons -->
+                        <div class="d-flex gap-2">
+
+                            <button type="submit"
+                                    class="btn btn-success px-4">
+
+                                <i class="bi bi-save me-1"></i>
+                                Register Car
+
+                            </button>
+
+                            <a th:href="@{/customer/list}"
+                               class="btn btn-outline-secondary">
+
+                                Cancel
+
+                            </a>
+
+                        </div>
+
+                    </form>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+</th:block>
+</body>
+</html>

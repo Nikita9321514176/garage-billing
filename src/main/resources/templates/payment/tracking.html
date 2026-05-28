@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body th:replace="~{layout/base :: layout(~{::content})}">
+<th:block th:fragment="content">
+
+<!-- PAGE HEADER -->
+<div class="page-header">
+    <h2>
+        <i class="bi bi-cash-stack me-2 text-success"></i>
+        Payment Tracking
+    </h2>
+
+    <a th:href="@{/bill/new}" class="btn btn-primary btn-sm">
+        <i class="bi bi-plus-lg me-1"></i>New Bill
+    </a>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     STAT CARDS
+══════════════════════════════════════════════ -->
+<div class="row g-3 mb-4">
+
+    <div class="col-6 col-md-3">
+        <div class="stat-card border-danger">
+            <div class="stat-label">Overdue Bills</div>
+
+            <div class="stat-value text-danger"
+                 th:text="${trackingStats['overdue_count'] ?: 0}">
+                0
+            </div>
+
+            <small class="text-muted">past due date</small>
+        </div>
+    </div>
+
+    <div class="col-6 col-md-3">
+        <div class="stat-card border-warning">
+            <div class="stat-label">Total Pending</div>
+
+            <div class="stat-value text-warning">
+                &#8377;
+                <span th:text="${#numbers.formatDecimal(
+                    trackingStats['total_pending'] ?: 0,
+                    1, 'COMMA', 0, 'POINT')}">
+                    0
+                </span>
+            </div>
+
+            <small class="text-muted">balance remaining</small>
+        </div>
+    </div>
+
+    <div class="col-6 col-md-3">
+        <div class="stat-card border-success">
+            <div class="stat-label">Collected Today</div>
+
+            <div class="stat-value text-success">
+                &#8377;
+                <span th:text="${#numbers.formatDecimal(
+                    collectedToday,
+                    1, 'COMMA', 0, 'POINT')}">
+                    0
+                </span>
+            </div>
+
+            <small class="text-muted">payments today</small>
+        </div>
+    </div>
+
+    <div class="col-6 col-md-3">
+        <div class="stat-card border-primary">
+            <div class="stat-label">Partial Bills</div>
+
+            <div class="stat-value text-primary"
+                 th:text="${trackingStats['partial_count'] ?: 0}">
+                0
+            </div>
+
+            <small class="text-muted">partially paid</small>
+        </div>
+    </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════════
+     FILTER BUTTONS
+══════════════════════════════════════════════ -->
+<div class="d-flex gap-2 flex-wrap mb-3">
+
+    <a th:href="@{/payment/tracking(status='ALL')}"
+       class="btn btn-sm"
+       th:classappend="${activeFilter == 'ALL'}
+           ? 'btn-info' : 'btn-outline-secondary'">
+
+        All
+
+        <span class="badge bg-secondary ms-1"
+              th:text="${billCount}">
+            0
+        </span>
+    </a>
+
+    <a th:href="@{/payment/tracking(status='PENDING')}"
+       class="btn btn-sm"
+       th:classappend="${activeFilter == 'PENDING'}
+           ? 'btn-danger' : 'btn-outline-danger'">
+
+        <i class="bi bi-clock me-1"></i>Pending
+
+        <span class="badge bg-danger ms-1"
+              th:text="${trackingStats['pending_count'] ?: 0}">
+            0
+        </span>
+    </a>
+
+    <a th:href="@{/payment/tracking(status='PARTIAL')}"
+       class="btn btn-sm"
+       th:classappend="${activeFilter == 'PARTIAL'}
+           ? 'btn-warning' : 'btn-outline-warning'">
+
+        <i class="bi bi-pie-chart me-1"></i>Partial
+
+        <span class="badge bg-warning text-dark ms-1"
+              th:text="${trackingStats['partial_count'] ?: 0}">
+            0
+        </span>
+    </a>
+
+    <a th:href="@{/payment/tracking(status='PAID')}"
+       class="btn btn-sm"
+       th:classappend="${activeFilter == 'PAID'}
+           ? 'btn-success' : 'btn-outline-success'">
+
+        <i class="bi bi-check-circle me-1"></i>Paid
+
+        <span class="badge bg-success ms-1"
+              th:text="${trackingStats['paid_count'] ?: 0}">
+            0
+        </span>
+    </a>
+
+    <a th:href="@{/payment/tracking(status='OVERDUE')}"
+       class="btn btn-sm"
+       th:classappend="${activeFilter == 'OVERDUE'}
+           ? 'btn-dark' : 'btn-outline-dark'">
+
+        <i class="bi bi-exclamation-triangle me-1"></i>Overdue
+
+        <span class="badge bg-dark ms-1"
+              th:text="${trackingStats['overdue_count'] ?: 0}">
+            0
+        </span>
+    </a>
+
+</div>
+
+<!-- ══════════════════════════════════════════════
+     BILLS TABLE
+══════════════════════════════════════════════ -->
+<div class="card">
+
+    <div class="card-header bg-dark text-white
+                d-flex justify-content-between align-items-center">
+
+        <span>
+            <i class="bi bi-table me-2"></i>
+
+            Bills —
+            <span th:text="${activeFilter == 'ALL'}
+                ? 'All statuses' : activeFilter">
+                ALL
+            </span>
+        </span>
+
+        <span class="badge bg-secondary"
+              th:text="${billCount} + ' bills'">
+            0
+        </span>
+
+    </div>
+
+    <div class="card-body p-0">
+
+        <div class="table-responsive">
+
+            <table class="table table-hover mb-0">
+
+                <thead>
+                <tr>
+                    <th>Bill No.</th>
+                    <th>Customer</th>
+                    <th>Car</th>
+                    <th class="text-end">Total</th>
+                    <th class="text-end">Paid</th>
+                    <th class="text-end">Balance</th>
+                    <th>Progress</th>
+                    <th>Status</th>
+                    <th>Due Date</th>
+                    <th></th>
+                </tr>
+                </thead>
+
+                <tbody>
+
+                <tr th:each="bill : ${bills}"
+                    th:classappend="${bill['is_overdue'] != null
+                        and bill['is_overdue'].toString() == '1'}
+                        ? 'table-danger' : ''">
+
+                    <td>
+                        <a th:href="@{/bill/{id}(id=${bill['id']})}"
+                           class="fw-semibold text-decoration-none"
+                           th:text="${bill['bill_number']}">
+                            —
+                        </a>
+                    </td>
+
+                    <td>
+                        <div th:text="${bill['customer_name']}">—</div>
+
+                        <small class="text-muted"
+                               th:text="${bill['customer_phone']}">
+                            —
+                        </small>
+                    </td>
+
+                    <td>
+                        <span class="car-number-plate"
+                              th:text="${bill['car_number']}">
+                            —
+                        </span>
+
+                        <div class="small text-muted"
+                             th:text="${bill['car_model']}">
+                            —
+                        </div>
+                    </td>
+
+                    <td class="text-end fw-semibold">
+                        &#8377;
+                        <span th:text="${#numbers.formatDecimal(
+                            bill['total_amount'],
+                            1,'COMMA',0,'POINT')}">
+                            0
+                        </span>
+                    </td>
+
+                    <td class="text-end text-success">
+                        &#8377;
+                        <span th:text="${#numbers.formatDecimal(
+                            bill['paid_amount'],
+                            1,'COMMA',0,'POINT')}">
+                            0
+                        </span>
+                    </td>
+
+                    <td class="text-end"
+                        th:classappend="${bill['balance_amount'] != null
+                            and bill['balance_amount'].toString() != '0.00'
+                            and bill['balance_amount'].toString() != '0'}
+                            ? 'text-danger fw-semibold' : 'text-muted'">
+
+                        &#8377;
+                        <span th:text="${#numbers.formatDecimal(
+                            bill['balance_amount'],
+                            1,'COMMA',0,'POINT')}">
+                            0
+                        </span>
+                    </td>
+
+                    <!-- PROGRESS BAR -->
+                    <td style="min-width:90px">
+
+                        <th:block th:with="
+                            total=${bill['total_amount']},
+                            paid=${bill['paid_amount']},
+                            pct=${total != null
+                                and total.toString() != '0'
+                                ? #numbers.formatDecimal(
+                                    paid.doubleValue()
+                                    / total.doubleValue() * 100,
+                                    1, 'POINT', 0, 'POINT')
+                                : '0'}">
+
+                            <div class="small text-muted mb-1"
+                                 th:text="${pct} + '%'">
+                                0%
+                            </div>
+
+                            <div class="progress"
+                                 style="height:6px;border-radius:3px">
+
+                                <div class="progress-bar"
+                                     role="progressbar"
+                                     th:style="'width:' + ${pct} + '%'"
+                                     th:classappend="${pct == '100'}
+                                         ? 'bg-success'
+                                         : (${pct == '0'}
+                                             ? 'bg-danger'
+                                             : 'bg-warning')">
+                                </div>
+
+                            </div>
+
+                        </th:block>
+
+                    </td>
+
+                    <!-- STATUS -->
+                    <td>
+
+                        <th:block th:with="st=${bill['payment_status']}">
+
+                            <span th:if="${st == 'PAID'}"
+                                  class="badge badge-paid">
+                                PAID
+                            </span>
+
+                            <span th:if="${st == 'PARTIAL'}"
+                                  class="badge badge-partial">
+                                PARTIAL
+                            </span>
+
+                            <span th:if="${st == 'PENDING'}"
+                                  class="badge badge-pending">
+                                PENDING
+                            </span>
+
+                        </th:block>
+
+                    </td>
+
+                    <!-- DUE DATE -->
+                    <td>
+
+                        <th:block th:if="${bill['due_date'] != null}">
+
+                            <span th:if="${bill['is_overdue'] != null
+                                         and bill['is_overdue']
+                                             .toString() == '1'}"
+                                  class="text-danger small">
+
+                                <i class="bi bi-exclamation-triangle-fill me-1"></i>
+
+                                <span th:text="${bill['due_date']}">—</span>
+
+                                <div class="text-danger"
+                                     style="font-size:10px"
+                                     th:text="${bill['days_overdue']} + ' days overdue'">
+                                </div>
+
+                            </span>
+
+                            <span th:if="${bill['is_overdue'] == null
+                                         or bill['is_overdue']
+                                             .toString() != '1'}"
+                                  class="small text-muted"
+                                  th:text="${bill['due_date']}">
+                                —
+                            </span>
+
+                        </th:block>
+
+                        <span th:if="${bill['due_date'] == null}"
+                              class="text-muted small">
+                            —
+                        </span>
+
+                    </td>
+
+                    <!-- ACTIONS -->
+                    <td>
+
+                        <div class="d-flex gap-1">
+
+                            <!-- VIEW -->
+                            <a th:href="@{/bill/{id}(id=${bill['id']})}"
+                               class="btn btn-sm btn-outline-primary"
+                               title="View bill">
+                                <i class="bi bi-eye"></i>
+                            </a>
+
+                            <!-- WHATSAPP -->
+                            <a th:if="${bill['balance_amount'] != null
+                                      and bill['balance_amount']
+                                          .toString() != '0.00'
+                                      and bill['balance_amount']
+                                          .toString() != '0'}"
+
+                               th:href="${'https://wa.me/91'
+                                        + bill['customer_phone']
+                                        + '?text=Dear+'
+                                        + bill['customer_name']
+                                        + ',+your+bill+'
+                                        + bill['bill_number']
+                                        + '+has+a+balance+of+Rs.'
+                                        + bill['balance_amount']
+                                        + '+pending.+Please+pay+at+earliest.+-+Garage'}"
+
+                               target="_blank"
+                               class="btn btn-sm btn-outline-success"
+                               title="Send WhatsApp reminder">
+
+                                <i class="bi bi-whatsapp"></i>
+
+                            </a>
+
+                            <!-- ADD REMINDER -->
+                            <form th:if="${bill['is_overdue'] != null
+                                          and bill['is_overdue'] == true}"
+                                  th:action="@{/reminder/create}"
+                                  method="post"
+                                  class="d-inline">
+
+                                <input type="hidden"
+                                       name="billId"
+                                       th:value="${bill['id']}"/>
+
+                                <button type="submit"
+                                        class="btn btn-sm btn-outline-warning"
+                                        title="Create reminder">
+
+                                    <i class="bi bi-bell"></i>
+
+                                </button>
+
+                            </form>
+
+                        </div>
+
+                    </td>
+
+                </tr>
+
+                <!-- EMPTY STATE -->
+                <tr th:if="${#lists.isEmpty(bills)}">
+
+                    <td colspan="10"
+                        class="text-center text-muted py-5">
+
+                        <i class="bi bi-inbox fs-2 d-block mb-2"></i>
+
+                        No bills found for filter:
+                        <strong th:text="${activeFilter}">
+                            ALL
+                        </strong>
+
+                    </td>
+
+                </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+</th:block>
+</body>
+</html>

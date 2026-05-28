@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body th:replace="~{layout/base :: layout(~{::content})}">
+<th:block th:fragment="content">
+
+    <div class="page-header">
+        <h2>
+            <i class="bi bi-person-plus me-2 text-primary"></i>
+            Add New Customer
+        </h2>
+
+        <a th:href="@{/customer/list}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back to List
+        </a>
+    </div>
+
+    <div class="row justify-content-center">
+
+        <div class="col-md-8">
+
+            <div class="card">
+
+                <div class="card-header bg-primary text-white">
+                    <i class="bi bi-person-vcard me-2"></i>
+                    Customer Details
+                </div>
+
+                <div class="card-body">
+
+                    <!--
+                        IMPORTANT:
+                        Using th:action instead of plain action enables
+                        Spring Security CSRF token injection automatically.
+
+                        Without th:action:
+                        POST forms fail with 403 Forbidden.
+
+                        Spring Security checks every POST request for:
+                        1. Valid session
+                        2. Valid CSRF token
+
+                        Thymeleaf automatically adds hidden CSRF field
+                        when using th:action.
+                    -->
+                    <form th:action="@{/customer/save}" method="post">
+
+                        <div class="row g-3">
+
+                            <!-- Customer Name -->
+                            <div class="col-md-6">
+
+                                <label class="form-label" for="name">
+                                    Customer Name
+                                    <span class="text-danger">*</span>
+                                </label>
+
+                                <input type="text"
+                                       id="name"
+                                       name="name"
+                                       class="form-control"
+                                       placeholder="e.g. Ravi Kumar"
+                                       required
+                                       autocomplete="name">
+
+                            </div>
+
+                            <!-- Phone Number -->
+                            <div class="col-md-6">
+
+                                <label class="form-label" for="phone">
+                                    Phone Number
+                                    <span class="text-danger">*</span>
+                                </label>
+
+                                <input type="tel"
+                                       id="phone"
+                                       name="phone"
+                                       class="form-control"
+                                       placeholder="e.g. 9876543210"
+                                       pattern="[0-9]{10}"
+                                       title="Enter 10-digit phone number"
+                                       required
+                                       autocomplete="tel">
+
+                                <div class="form-text">
+                                    Enter 10-digit mobile number
+                                </div>
+
+                            </div>
+
+                            <!-- Email -->
+                            <div class="col-md-6">
+
+                                <label class="form-label" for="email">
+                                    Email Address
+                                </label>
+
+                                <input type="email"
+                                       id="email"
+                                       name="email"
+                                       class="form-control"
+                                       placeholder="e.g. ravi@email.com"
+                                       autocomplete="email">
+
+                                <div class="form-text text-muted">
+                                    Optional
+                                </div>
+
+                            </div>
+
+                        </div><!-- /row -->
+
+                        <hr class="my-4">
+
+                        <!-- Buttons -->
+                        <div class="d-flex gap-2">
+
+                            <button type="submit"
+                                    class="btn btn-primary px-4">
+
+                                <i class="bi bi-save me-1"></i>
+                                Save Customer
+
+                            </button>
+
+                            <a th:href="@{/customer/list}"
+                               class="btn btn-outline-secondary">
+
+                                Cancel
+
+                            </a>
+
+                        </div>
+
+                    </form>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+</th:block>
+</body>
+</html>

@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<!--
+  xmlns:th declares the Thymeleaf namespace.
+  This lets Eclipse/IDE recognise th:* attributes without showing errors.
+-->
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <!--
+      th:replace="~{layout/base :: head}"  ← wrong approach (base doesn't expose head)
+      Instead we use the full layout fragment pattern below.
+    -->
+</head>
+
+<!--
+  th:replace="~{layout/base :: layout(~{::content})}"
+  This tells Thymeleaf:
+    1. Use the "layout" fragment from layout/base.html
+    2. Pass everything inside <th:block th:ref="content"> as the content slot
+  This is how all our pages share the same navbar/footer.
+-->
+<body th:replace="~{layout/base :: layout(~{::content})}">
+
+<th:block th:fragment="content">
+
+    <!-- PAGE HEADER -->
+    <div class="page-header">
+        <h2><i class="bi bi-people-fill me-2 text-primary"></i>All Customers</h2>
+        <!--
+          th:href="@{/customer/new}"
+          @{} = URL expression. Spring adds context path automatically.
+          Equivalent to: href="/customer/new"
+        -->
+        <a th:href="@{/customer/new}" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i>Add New Customer
+        </a>
+    </div>
+
+    <!-- SUMMARY CARD -->
+    <div class="row mb-3">
+        <div class="col-md-3">
+            <div class="stat-card border-primary">
+                <div class="stat-label">Total Customers</div>
+                <!--
+                  th:text="${totalCount}"
+                  Outputs the value of 'totalCount' from the model.
+                  Automatically HTML-escapes special characters (XSS safe).
+                -->
+                <div class="stat-value text-primary" th:text="${totalCount}">0</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CUSTOMERS TABLE -->
+    <div class="card">
+        <div class="card-header bg-dark text-white">
+            <i class="bi bi-table me-2"></i>Customer List
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Name</th>
+                            <th>Phone</th>
+                            <th>Email</th>
+                            <th>Registered On</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!--
+                          th:each="customer : ${customers}"
+                          Loops through the 'customers' list from the model.
+                          For each iteration, 'customer' holds one Customer object.
+
+                          th:each also gives you an iterStat object:
+                          iterStat.count  = current position (1, 2, 3...)
+                          iterStat.index  = 0-based index (0, 1, 2...)
+                          iterStat.first  = true on first item
+                          iterStat.last   = true on last item
+                          iterStat.even/odd = alternating true/false
+                        -->
+                        <tr th:each="customer, iterStat : ${customers}">
+                            <td th:text="${iterStat.count}" class="text-muted">1</td>
+                            <td>
+                                <strong th:text="${customer.name}">Name</strong>
+                            </td>
+                            <td>
+                                <!-- tel: link makes phone number clickable on mobile -->
+                                <a th:href="'tel:' + ${customer.phone}"
+                                   th:text="${customer.phone}"
+                                   class="text-decoration-none">
+                                </a>
+                            </td>
+                            <td>
+                                <!--
+                                  th:text="${customer.email ?: 'N/A'}"
+                                  ?: is Thymeleaf's Elvis operator (like Java's ternary).
+                                  If customer.email is null → display "N/A"
+                                -->
+                                <span th:text="${customer.email ?: 'N/A'}"
+                                      class="text-muted">email</span>
+                            </td>
+                            <td>
+                                <!--
+                                  #temporals.format() = Thymeleaf's date formatting utility
+                                  Converts LocalDateTime to human-readable string
+                                -->
+                                <span th:text="${customer.createdAt != null ?
+                                    #temporals.format(customer.createdAt, 'dd-MMM-yyyy') : 'N/A'}">
+                                </span>
+                            </td>
+                            <td>
+                                <a th:href="@{/customer/{id}(id=${customer.id})}"
+                                   class="btn btn-sm btn-outline-primary me-1">
+                                    <i class="bi bi-eye"></i> View
+                                </a>
+                                <!--
+                                  @{/car/new(customerId=${customer.id})}
+                                  URL with query parameter: /car/new?customerId=5
+                                  Thymeleaf URL expression syntax for query params:
+                                  @{/path(paramName=${value})}
+                                -->
+                                <a th:href="@{/car/new(customerId=${customer.id})}"
+                                   class="btn btn-sm btn-outline-success">
+                                    <i class="bi bi-car-front"></i> Add Car
+                                </a>
+                            </td>
+                        </tr>
+
+                        <!-- Empty state — shown when customers list is empty -->
+                        <!--
+                          th:if="${#lists.isEmpty(customers)}"
+                          #lists is Thymeleaf's list utility.
+                          isEmpty() returns true if list has 0 elements.
+                        -->
+                        <tr th:if="${#lists.isEmpty(customers)}">
+                            <td colspan="6" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox fs-2 d-block mb-2"></i>
+                                No customers yet.
+                                <a th:href="@{/customer/new}">Add your first customer</a>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</th:block>
+</body>
+</html>

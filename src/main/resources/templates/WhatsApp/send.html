@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body th:replace="~{layout/base :: layout(~{::content})}">
+<th:block th:fragment="content">
+
+<div class="page-header">
+    <h2>
+        <i class="bi bi-whatsapp me-2 text-success"></i>
+        Send WhatsApp Message
+    </h2>
+
+    <a th:href="@{/bill/{id}(id=${bill.id})}"
+       class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>
+        Back to Bill
+    </a>
+</div>
+
+<div class="row justify-content-center">
+<div class="col-lg-8">
+
+<!-- ═════════════════ BILL SUMMARY ═════════════════ -->
+<div class="card mb-3">
+
+    <div class="card-header bg-dark text-white">
+        <i class="bi bi-receipt me-2"></i>
+        Bill Summary
+    </div>
+
+    <div class="card-body">
+
+        <div class="row g-2">
+
+            <div class="col-md-3">
+                <div class="small text-muted">Bill</div>
+                <div class="fw-semibold"
+                     th:text="${bill.billNumber}">
+                    —
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="small text-muted">Customer</div>
+                <div class="fw-semibold"
+                     th:text="${bill.customerName}">
+                    —
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="small text-muted">Phone</div>
+                <div class="fw-semibold"
+                     th:text="${bill.customerPhone}">
+                    —
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="small text-muted">Balance</div>
+
+                <div class="fw-semibold text-danger">
+                    &#8377;
+                    <span th:text="${#numbers.formatDecimal(
+                        bill.balanceAmount,
+                        1,
+                        'COMMA',
+                        0,
+                        'POINT')}">
+                    </span>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+</div>
+
+<!-- ═════════════════ MESSAGE PREVIEW ═════════════════ -->
+<div class="card mb-3">
+
+    <div class="card-header bg-success text-white">
+        <i class="bi bi-chat-text me-2"></i>
+
+        Message Preview
+
+        <small class="ms-2 opacity-75">
+            (you can edit before sending)
+        </small>
+    </div>
+
+    <div class="card-body">
+
+        <textarea id="messageText"
+                  class="form-control"
+                  rows="10"
+                  style="
+                    font-family: monospace;
+                    font-size: 13px;
+                    white-space: pre-wrap;
+                  "
+                  th:text="${message}">
+        </textarea>
+
+        <div class="mt-2 d-flex justify-content-between align-items-center">
+
+            <small class="text-muted">
+                <span id="charCount">0</span>
+                characters
+            </small>
+
+            <button type="button"
+                    class="btn btn-sm btn-outline-secondary"
+                    onclick="resetMessage()">
+
+                <i class="bi bi-arrow-counterclockwise me-1"></i>
+                Reset to default
+
+            </button>
+
+        </div>
+
+    </div>
+</div>
+
+<!-- ═════════════════ wa.me SEND SECTION ═════════════════ -->
+<div class="card mb-3">
+
+    <div class="card-header"
+         style="background:#25D366;color:#fff">
+
+        <i class="bi bi-whatsapp me-2"></i>
+
+        Free WhatsApp Sending (wa.me)
+
+    </div>
+
+    <div class="card-body">
+
+        <div class="alert alert-info mb-3">
+
+            <i class="bi bi-info-circle me-2"></i>
+
+            <strong>How this works:</strong>
+
+            Clicking the button below opens WhatsApp
+            (Web or mobile app) with your message
+            already typed.
+
+            You just tap
+            <strong>Send</strong>
+            in WhatsApp.
+
+        </div>
+
+        <!-- SEND BUTTON -->
+        <div class="d-grid">
+
+            <a id="waLink"
+               th:href="${waUrl}"
+               target="_blank"
+               class="btn btn-success btn-lg"
+               onclick="updateWaLink(event)">
+
+                <i class="bi bi-whatsapp me-2"></i>
+
+                Open WhatsApp and Send
+
+            </a>
+
+        </div>
+
+        <div class="mt-2 text-center">
+
+            <small class="text-muted">
+
+                Opens WhatsApp Web on desktop,
+                WhatsApp App on mobile
+
+            </small>
+
+        </div>
+
+        <!-- URL COPY BOX -->
+        <div class="mt-3">
+
+            <label class="form-label small text-muted">
+
+                WhatsApp URL
+                (copy if button doesn't work):
+
+            </label>
+
+            <div class="input-group input-group-sm">
+
+                <input type="text"
+                       id="waUrlDisplay"
+                       class="form-control"
+                       th:value="${waUrl}"
+                       readonly />
+
+                <button class="btn btn-outline-secondary"
+                        type="button"
+                        onclick="copyUrl()">
+
+                    <i class="bi bi-clipboard"></i>
+
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+</div>
+
+</div>
+</div>
+
+<!-- ═════════════════ JAVASCRIPT ═════════════════ -->
+<script th:inline="javascript">
+/*<![CDATA[*/
+
+// Original generated message
+var defaultMessage = /*[[${message}]]*/ '';
+
+// Customer phone number
+var customerPhone = /*[[${bill.customerPhone}]]*/ '';
+
+// On page load
+document.addEventListener('DOMContentLoaded', function() {
+
+    updateCharCount();
+    updateWaUrlDisplay();
+
+});
+
+// Live update when typing
+var textarea = document.getElementById('messageText');
+
+if (textarea) {
+
+    textarea.addEventListener('input', function() {
+
+        updateCharCount();
+        updateWaUrlDisplay();
+
+    });
+
+}
+
+// Character counter
+function updateCharCount() {
+
+    var t = document.getElementById('messageText');
+    var c = document.getElementById('charCount');
+
+    if (t && c) {
+        c.textContent = t.value.length;
+    }
+
+}
+
+// Build dynamic wa.me URL
+function updateWaUrlDisplay() {
+
+    var t = document.getElementById('messageText');
+    var display = document.getElementById('waUrlDisplay');
+
+    if (!t || !display) return;
+
+    // Clean phone number
+    var phone = customerPhone.replace(/[^0-9]/g, '');
+
+    if (phone.startsWith('0')) {
+        phone = phone.substring(1);
+    }
+
+    // Add India code
+    if (phone.length === 10) {
+        phone = '91' + phone;
+    }
+
+    // Encode message
+    var encoded = encodeURIComponent(t.value);
+
+    // Final wa.me URL
+    var url =
+        'https://wa.me/'
+        + phone
+        + '?text='
+        + encoded;
+
+    display.value = url;
+
+    // Update send button link
+    var link = document.getElementById('waLink');
+
+    if (link) {
+        link.href = url;
+    }
+}
+
+// Called when button clicked
+function updateWaLink(event) {
+
+    updateWaUrlDisplay();
+
+}
+
+// Reset original message
+function resetMessage() {
+
+    var t = document.getElementById('messageText');
+
+    if (t) {
+
+        t.value = defaultMessage;
+
+        updateCharCount();
+        updateWaUrlDisplay();
+
+    }
+
+}
+
+// Copy URL
+function copyUrl() {
+
+    var display =
+        document.getElementById('waUrlDisplay');
+
+    if (!display) return;
+
+    navigator.clipboard.writeText(display.value)
+
+        .then(function() {
+
+            alert('URL copied to clipboard!');
+
+        })
+
+        .catch(function() {
+
+            display.select();
+            document.execCommand('copy');
+
+        });
+
+}
+
+/*]]>*/
+</script>
+
+</th:block>
+</body>
+</html>

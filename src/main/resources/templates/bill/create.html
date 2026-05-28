@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body th:replace="~{layout/base :: layout(~{::content})}">
+<th:block th:fragment="content">
+
+<div class="page-header">
+    <h2><i class="bi bi-file-earmark-plus me-2 text-primary"></i>Create New Bill</h2>
+    <a th:href="@{/dashboard}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>Dashboard
+    </a>
+</div>
+
+<!--
+    IMPORTANT:
+    th:action="@{/bill/save}" is REQUIRED for Spring Security CSRF token.
+    If you use normal action="/bill/save", Spring Security gives 403 Forbidden.
+-->
+<form th:action="@{/bill/save}" method="post" id="billForm">
+
+<div class="row g-4">
+
+    <!-- ════════════════════════════════════
+         LEFT COLUMN
+    ════════════════════════════════════ -->
+    <div class="col-lg-7">
+
+        <!-- CUSTOMER CARD -->
+        <div class="card mb-3">
+            <div class="card-header bg-primary text-white">
+                <i class="bi bi-person me-2"></i>Customer Details
+            </div>
+
+            <div class="card-body">
+
+                <div class="mb-3">
+                    <label class="form-label">Select Existing Customer</label>
+
+                    <select id="existingCustomerId"
+                            name="existingCustomerId"
+                            class="form-select"
+                            onchange="handleCustomerChange(this.value)">
+
+                        <option value="">-- New Customer --</option>
+
+                        <option th:each="cust : ${customers}"
+                                th:value="${cust.id}"
+                                th:text="${cust.name + ' (' + cust.phone + ')'}"
+                                th:selected="${cust.id == preselectedCustomerId}">
+                        </option>
+
+                    </select>
+
+                    <div class="form-text">
+                        Select existing or leave blank to add new customer below
+                    </div>
+                </div>
+
+                <!-- New customer fields -->
+                <div id="newCustomerFields"
+                     class="border rounded p-3 bg-light">
+
+                    <p class="text-muted small mb-2">
+                        <i class="bi bi-info-circle me-1"></i>
+                        New customer details
+                    </p>
+
+                    <div class="row g-2">
+
+                        <div class="col-md-6">
+                            <label class="form-label">
+                                Name <span class="text-danger">*</span>
+                            </label>
+
+                            <input type="text"
+                                   name="customerName"
+                                   class="form-control form-control-sm"
+                                   placeholder="Customer full name"/>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">
+                                Phone <span class="text-danger">*</span>
+                            </label>
+
+                            <input type="tel"
+                                   name="customerPhone"
+                                   class="form-control form-control-sm"
+                                   placeholder="10-digit mobile"
+                                   pattern="[0-9]{10}"/>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Email</label>
+
+                            <input type="email"
+                                   name="customerEmail"
+                                   class="form-control form-control-sm"
+                                   placeholder="Optional"/>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- CAR CARD -->
+        <div class="card mb-3">
+
+            <div class="card-header bg-success text-white">
+                <i class="bi bi-car-front me-2"></i>Car Details
+            </div>
+
+            <div class="card-body">
+
+                <div class="mb-3">
+
+                    <label class="form-label">Select Car</label>
+
+                    <select id="existingCarId"
+                            name="existingCarId"
+                            class="form-select"
+                            onchange="handleCarChange(this.value)">
+
+                        <option value="">-- Select or add new --</option>
+
+                        <option th:each="car : ${cars}"
+                                th:value="${car.id}"
+                                th:text="${car.carNumber + ' — ' + car.carModel}"
+                                th:selected="${car.id == preselectedCarId}">
+                        </option>
+
+                        <option value="0">+ Register new car</option>
+
+                    </select>
+                </div>
+
+                <!-- New car fields -->
+                <div id="newCarFields"
+                     style="display:none"
+                     class="border rounded p-3 bg-light">
+
+                    <p class="text-muted small mb-2">
+                        <i class="bi bi-info-circle me-1"></i>
+                        New car details
+                    </p>
+
+                    <div class="row g-2">
+
+                        <div class="col-md-6">
+                            <label class="form-label">
+                                Car Number <span class="text-danger">*</span>
+                            </label>
+
+                            <input type="text"
+                                   name="carNumber"
+                                   class="form-control form-control-sm car-number-plate"
+                                   placeholder="MH12AB1234"
+                                   oninput="this.value=this.value.toUpperCase()"/>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">
+                                Car Model <span class="text-danger">*</span>
+                            </label>
+
+                            <input type="text"
+                                   name="carModel"
+                                   class="form-control form-control-sm"
+                                   placeholder="e.g. Swift, Innova"/>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Brand</label>
+
+                            <input type="text"
+                                   name="carBrand"
+                                   class="form-control form-control-sm"
+                                   placeholder="e.g. Maruti, Toyota"/>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- SERVICES CARD -->
+        <div class="card">
+
+            <div class="card-header bg-dark text-white
+                        d-flex justify-content-between align-items-center">
+
+                <span>
+                    <i class="bi bi-tools me-2"></i>
+                    Services / Work Done
+                </span>
+
+                <button type="button"
+                        class="btn btn-sm btn-success"
+                        onclick="addServiceRow()">
+
+                    <i class="bi bi-plus-lg me-1"></i>
+                    Add Service
+                </button>
+
+            </div>
+
+            <div class="card-body">
+
+                <!-- Column labels -->
+                <div class="row g-2 mb-2 d-none d-md-flex">
+
+                    <div class="col-md-4">
+                        <small class="text-muted fw-semibold">
+                            SERVICE NAME *
+                        </small>
+                    </div>
+
+                    <div class="col-md-4">
+                        <small class="text-muted fw-semibold">
+                            DESCRIPTION
+                        </small>
+                    </div>
+
+                    <div class="col-md-3">
+                        <small class="text-muted fw-semibold">
+                            AMOUNT *
+                        </small>
+                    </div>
+
+                </div>
+
+                <!-- Rows container -->
+                <div id="serviceRowsContainer">
+
+                    <!-- Default row -->
+                    <div class="service-row" id="serviceRow_0">
+
+                        <div class="row g-2 align-items-center">
+
+                            <div class="col-md-4">
+                                <input type="text"
+                                       name="services[0].serviceName"
+                                       class="form-control form-control-sm"
+                                       placeholder="e.g. Oil Change"
+                                       required/>
+                            </div>
+
+                            <div class="col-md-4">
+                                <input type="text"
+                                       name="services[0].description"
+                                       class="form-control form-control-sm"
+                                       placeholder="Description (optional)"/>
+                            </div>
+
+                            <div class="col-md-3">
+
+                                <div class="input-group input-group-sm">
+
+                                    <span class="input-group-text">&#8377;</span>
+
+                                    <input type="number"
+                                           name="services[0].amount"
+                                           class="form-control form-control-sm amount-input"
+                                           placeholder="0.00"
+                                           min="0"
+                                           step="0.01"
+                                           oninput="calculateTotal()"/>
+
+                                </div>
+                            </div>
+
+                            <div class="col-md-1 text-center">
+
+                                <button type="button"
+                                        class="btn btn-outline-danger btn-sm"
+                                        onclick="removeRow('serviceRow_0')">
+
+                                    <i class="bi bi-trash"></i>
+
+                                </button>
+
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ════════════════════════════════════
+         RIGHT COLUMN
+    ════════════════════════════════════ -->
+    <div class="col-lg-5">
+
+        <div class="card sticky-top" style="top:80px">
+
+            <div class="card-header bg-dark text-white">
+                <i class="bi bi-receipt me-2"></i>Bill Summary
+            </div>
+
+            <div class="card-body">
+
+                <!-- Total -->
+                <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+
+                    <span class="text-muted">Total Amount</span>
+
+                    <span id="totalAmountDisplay"
+                          class="fw-bold fs-4 text-primary">
+
+                        &#8377;0.00
+
+                    </span>
+
+                </div>
+
+                <input type="hidden"
+                       id="totalAmountHidden"
+                       name="totalAmount"
+                       value="0"/>
+
+                <!-- Payment -->
+                <div class="mb-3">
+
+                    <label class="form-label">
+                        Payment Received Now
+                    </label>
+
+                    <div class="input-group">
+
+                        <span class="input-group-text">&#8377;</span>
+
+                        <input type="number"
+                               id="initialPayment"
+                               name="initialPayment"
+                               class="form-control"
+                               placeholder="0.00"
+                               min="0"
+                               step="0.01"
+                               value="0"
+                               oninput="calculateTotal()"/>
+
+                    </div>
+
+                    <div class="form-text">
+                        Enter 0 if no payment today
+                    </div>
+
+                </div>
+
+                <!-- Balance -->
+                <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+
+                    <span class="text-muted">Balance Due</span>
+
+                    <span id="balanceDisplay"
+                          class="fw-bold text-danger fs-5">
+
+                        &#8377;0.00
+
+                    </span>
+
+                </div>
+
+                <!-- Status -->
+                <div class="d-flex justify-content-between align-items-center mb-3">
+
+                    <span class="text-muted">Payment Status</span>
+
+                    <span id="statusPreview"
+                          class="badge badge-pending">
+
+                        PENDING
+
+                    </span>
+
+                </div>
+
+                <!-- Due date -->
+                <div class="mb-3">
+
+                    <label class="form-label">
+                        Payment Due Date
+                    </label>
+
+                    <input type="date"
+                           name="dueDate"
+                           class="form-control"/>
+
+                </div>
+
+                <!-- Notes -->
+                <div class="mb-3">
+
+                    <label class="form-label">Notes</label>
+
+                    <textarea name="notes"
+                              class="form-control"
+                              rows="2"
+                              placeholder="Any special notes..."></textarea>
+
+                </div>
+
+                <hr/>
+
+                <div class="d-grid">
+
+                    <button type="submit"
+                            class="btn btn-primary btn-lg">
+
+                        <i class="bi bi-save me-2"></i>
+                        Save Bill
+
+                    </button>
+
+                </div>
+
+                <div class="mt-2 text-center">
+                    <small class="text-muted">
+                        Bill number will be auto-generated
+                    </small>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+</div>
+</form>
+
+<!-- PAGE SCRIPT -->
+<script th:inline="javascript">
+/*<![CDATA[*/
+
+var preselectedCustomerId = /*[[${preselectedCustomerId}]]*/ null;
+var preselectedCarId      = /*[[${preselectedCarId}]]*/ null;
+
+document.addEventListener('DOMContentLoaded', function() {
+
+    var custSelect = document.getElementById('existingCustomerId');
+
+    if (preselectedCustomerId) {
+
+        custSelect.value = String(preselectedCustomerId);
+
+        document.getElementById('newCustomerFields').style.display = 'none';
+
+        loadCarsForCustomer(preselectedCustomerId);
+
+    } else if (custSelect && custSelect.value && custSelect.value !== '') {
+
+        document.getElementById('newCustomerFields').style.display = 'none';
+
+        loadCarsForCustomer(custSelect.value);
+
+    } else {
+
+        document.getElementById('newCustomerFields').style.display = 'block';
+    }
+
+    var paidInput = document.getElementById('initialPayment');
+
+    if (paidInput) {
+        paidInput.addEventListener('input', calculateTotal);
+    }
+
+    calculateTotal();
+});
+
+function handleCustomerChange(customerId) {
+
+    if (!customerId || customerId === '') {
+
+        document.getElementById('newCustomerFields').style.display = 'block';
+
+        var carSel = document.getElementById('existingCarId');
+
+        carSel.innerHTML =
+            '<option value="">-- Select or add new --</option>' +
+            '<option value="0">+ Register new car</option>';
+
+        document.getElementById('newCarFields').style.display = 'none';
+
+    } else {
+
+        document.getElementById('newCustomerFields').style.display = 'none';
+
+        loadCarsForCustomer(customerId);
+    }
+}
+
+function handleCarChange(value) {
+
+    var newCarFields = document.getElementById('newCarFields');
+
+    if (!newCarFields) return;
+
+    if (value === '0' || value === '') {
+
+        newCarFields.style.display = 'block';
+
+        newCarFields.scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest'
+        });
+
+    } else {
+
+        newCarFields.style.display = 'none';
+    }
+}
+
+/*]]>*/
+</script>
+
+</th:block>
+</body>
+</html>

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body th:replace="~{layout/base :: layout(~{::content})}">
+<th:block th:fragment="content">
+
+    <!-- PAGE HEADER -->
+    <div class="page-header">
+        <h2>
+            <i class="bi bi-person-circle me-2 text-primary"></i>
+            <!-- th:text safely renders the customer's name -->
+            Customer: <span th:text="${customer.name}">Name</span>
+        </h2>
+        <div class="d-flex gap-2">
+            <a th:href="@{/car/new(customerId=${customer.id})}"
+               class="btn btn-success btn-sm">
+                <i class="bi bi-plus-lg me-1"></i>Add Car
+            </a>
+            <a th:href="@{/bill/new(customerId=${customer.id})}"
+               class="btn btn-primary btn-sm">
+                <i class="bi bi-file-earmark-plus me-1"></i>New Bill
+            </a>
+            <a th:href="@{/customer/list}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left me-1"></i>Back
+            </a>
+        </div>
+    </div>
+
+    <!-- CUSTOMER INFO CARD -->
+    <div class="row mb-4">
+        <div class="col-md-5">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white">
+                    <i class="bi bi-person-badge me-2"></i>Customer Information
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless mb-0">
+                        <tr>
+                            <td class="text-muted fw-semibold" style="width:40%">Name</td>
+                            <td th:text="${customer.name}">—</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted fw-semibold">Phone</td>
+                            <td>
+                                <a th:href="'tel:' + ${customer.phone}"
+                                   th:text="${customer.phone}"
+                                   class="text-decoration-none">
+                                </a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted fw-semibold">Email</td>
+                            <td th:text="${customer.email ?: 'Not provided'}">—</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted fw-semibold">Member Since</td>
+                            <td th:text="${customer.createdAt != null ?
+                                #temporals.format(customer.createdAt, 'dd MMM yyyy') : 'N/A'}">—</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- SUMMARY STATS -->
+        <div class="col-md-7">
+            <div class="card h-100">
+                <div class="card-header bg-dark text-white">
+                    <i class="bi bi-bar-chart me-2"></i>Stats
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <div class="stat-card border-primary h-100">
+                                <div class="stat-label">Cars Registered</div>
+                                <div class="stat-value text-primary"
+                                     th:text="${carCount}">0</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CARS TABLE -->
+    <div class="card">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-car-front me-2"></i>Registered Cars</span>
+            <span class="badge bg-secondary" th:text="${carCount} + ' cars'">0 cars</span>
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Car Number</th>
+                        <th>Model</th>
+                        <th>Brand</th>
+                        <th>Year</th>
+                        <th>Color</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="car : ${cars}">
+                        <td>
+                            <!--
+                              car-number-plate CSS class makes it look like a real plate
+                            -->
+                            <span class="car-number-plate"
+                                  th:text="${car.carNumber}">MH12AB1234</span>
+                        </td>
+                        <td th:text="${car.carModel}">Model</td>
+                        <td th:text="${car.brand ?: '—'}">Brand</td>
+                        <td th:text="${car.manufactureYear ?: '—'}">Year</td>
+                        <td th:text="${car.color ?: '—'}">Color</td>
+                        <td>
+                            <a th:href="@{/car/search(carNumber=${car.carNumber})}"
+                               class="btn btn-sm btn-outline-info me-1">
+                                <i class="bi bi-clock-history"></i> History
+                            </a>
+                            <a th:href="@{/bill/new(carId=${car.id}, customerId=${customer.id})}"
+                               class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-receipt"></i> New Bill
+                            </a>
+                        </td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(cars)}">
+                        <td colspan="6" class="text-center text-muted py-4">
+                            <i class="bi bi-car-front fs-2 d-block mb-2"></i>
+                            No cars registered yet.
+                            <a th:href="@{/car/new(customerId=${customer.id})}">Add a car</a>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</th:block>
+</body>
+</html>

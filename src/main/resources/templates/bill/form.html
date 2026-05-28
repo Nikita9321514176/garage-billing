@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<body th:replace="~{layout/base :: layout(~{::content})}">
+
+<th:block th:fragment="content">
+
+    <div class="page-header d-flex justify-content-between align-items-center">
+        <h2>
+            <i class="bi bi-receipt me-2 text-primary"></i>
+            Create New Bill
+        </h2>
+
+        <a th:href="@{/dashboard}"
+           class="btn btn-outline-secondary">
+
+            <i class="bi bi-arrow-left"></i>
+            Back
+        </a>
+    </div>
+
+    <div class="card">
+
+        <div class="card-header bg-primary text-white">
+            Bill Details
+        </div>
+
+        <div class="card-body">
+
+            <div class="alert alert-info">
+
+                Bill module is working successfully.
+
+            </div>
+
+            <form>
+
+                <div class="mb-3">
+
+                    <label class="form-label">
+                        Customer
+                    </label>
+
+                    <input type="text"
+                           class="form-control"
+                           placeholder="Customer name">
+
+                </div>
+
+                <div class="mb-3">
+
+                    <label class="form-label">
+                        Car Number
+                    </label>
+
+                    <input type="text"
+                           class="form-control"
+                           placeholder="MH12AB1234">
+
+                </div>
+
+                <div class="mb-3">
+
+                    <label class="form-label">
+                        Amount
+                    </label>
+
+                    <input type="number"
+                           class="form-control"
+                           placeholder="0.00">
+
+                </div>
+
+                <button type="submit"
+                        class="btn btn-primary">
+
+                    <i class="bi bi-save"></i>
+                    Save Bill
+
+                </button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+</th:block>
+
+</body>
+</html>

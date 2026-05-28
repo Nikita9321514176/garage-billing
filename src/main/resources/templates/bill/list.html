@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body th:replace="~{layout/base :: layout(~{::content})}">
+<th:block th:fragment="content">
+
+<div class="page-header">
+    <h2>
+        <i class="bi bi-receipt me-2 text-primary"></i>All Bills
+    </h2>
+
+    <a th:href="@{/bill/new}" class="btn btn-primary">
+        <i class="bi bi-plus-lg me-1"></i>New Bill
+    </a>
+</div>
+
+<div class="card">
+
+    <div class="card-header bg-dark text-white">
+        <i class="bi bi-table me-2"></i>Bill History
+    </div>
+
+    <div class="card-body p-0">
+
+        <div class="table-responsive">
+
+            <table class="table table-hover mb-0">
+
+                <thead>
+                    <tr>
+                        <th>Bill No.</th>
+                        <th>Date</th>
+                        <th>Customer</th>
+                        <th>Car</th>
+                        <th class="text-end">Total</th>
+                        <th class="text-end">Paid</th>
+                        <th class="text-end">Balance</th>
+                        <th>Status</th>
+                        <th></th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    <tr th:each="bill : ${bills}">
+
+                        <td>
+                            <a th:href="@{/bill/{id}(id=${bill.id})}"
+                               class="fw-semibold text-decoration-none"
+                               th:text="${bill.billNumber}">—</a>
+                        </td>
+
+                        <td class="text-muted small"
+                            th:text="${bill.billDate != null ?
+                                #temporals.format(
+                                    bill.billDate,
+                                    'dd MMM yy'
+                                ) : '—'}">—</td>
+
+                        <td th:text="${bill.customerName}">—</td>
+
+                        <td>
+                            <span class="car-number-plate"
+                                  th:text="${bill.carNumber}">—</span>
+                        </td>
+
+                        <td class="text-end">
+                            &#8377;<span th:text="${#numbers.formatDecimal(
+                                bill.totalAmount,
+                                1,
+                                'COMMA',
+                                0,
+                                'POINT')}">0</span>
+                        </td>
+
+                        <td class="text-end text-success">
+                            &#8377;<span th:text="${#numbers.formatDecimal(
+                                bill.paidAmount,
+                                1,
+                                'COMMA',
+                                0,
+                                'POINT')}">0</span>
+                        </td>
+
+                        <td class="text-end text-danger">
+                            &#8377;<span th:text="${#numbers.formatDecimal(
+                                bill.balanceAmount,
+                                1,
+                                'COMMA',
+                                0,
+                                'POINT')}">0</span>
+                        </td>
+
+                        <td>
+
+                            <th:block th:with="st=${bill.paymentStatus}">
+
+                                <span th:if="${st == 'PAID'}"
+                                      class="badge badge-paid">
+                                    PAID
+                                </span>
+
+                                <span th:if="${st == 'PARTIAL'}"
+                                      class="badge badge-partial">
+                                    PARTIAL
+                                </span>
+
+                                <span th:if="${st == 'PENDING'}"
+                                      class="badge badge-pending">
+                                    PENDING
+                                </span>
+
+                            </th:block>
+
+                        </td>
+
+                        <!-- ACTIONS -->
+                        <td>
+
+                            <!-- VIEW BUTTON -->
+                            <a th:href="@{/bill/{id}(id=${bill.id})}"
+                               class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-eye"></i>
+                            </a>
+
+                            <!-- DOWNLOAD PDF BUTTON -->
+                            <a th:href="@{/bill/{id}/pdf(id=${bill.id})}"
+                               class="btn btn-sm btn-outline-danger ms-1"
+                               title="Download PDF">
+                                <i class="bi bi-file-pdf"></i>
+                            </a>
+
+                        </td>
+
+                    </tr>
+
+                    <!-- EMPTY STATE -->
+                    <tr th:if="${#lists.isEmpty(bills)}">
+
+                        <td colspan="9"
+                            class="text-center text-muted py-4">
+
+                            <i class="bi bi-inbox fs-2 d-block mb-2"></i>
+
+                            No bills found.
+
+                        </td>
+
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+</th:block>
+</body>
+</html>

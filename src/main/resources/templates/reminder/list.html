@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body th:replace="~{layout/base :: layout(~{::content})}">
+<th:block th:fragment="content">
+
+<div class="page-header">
+    <h2>
+        <i class="bi bi-bell-fill me-2 text-warning"></i>
+        Payment Reminders
+    </h2>
+    <form th:action="@{/reminder/scan}" method="post">
+        <button type="submit" class="btn btn-warning">
+            <i class="bi bi-search me-1"></i>
+            Scan Overdue Bills
+        </button>
+    </form>
+</div>
+
+<!-- ══ STAT CARDS ══════════════════════════════════════ -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-4">
+        <div class="stat-card border-danger">
+            <div class="stat-label">Pending Reminders</div>
+            <div class="stat-value text-danger"
+                 th:text="${reminderStats['pending_count'] ?: 0}">0</div>
+            <small class="text-muted">awaiting action</small>
+        </div>
+    </div>
+    <div class="col-6 col-md-4">
+        <div class="stat-card border-warning">
+            <div class="stat-label">Total Pending Balance</div>
+            <div class="stat-value text-warning">
+                &#8377;<span th:text="${#numbers.formatDecimal(
+                    reminderStats['total_pending_balance'] ?: 0,
+                    1, 'COMMA', 0, 'POINT')}">0</span>
+            </div>
+            <small class="text-muted">across all overdue bills</small>
+        </div>
+    </div>
+    <div class="col-6 col-md-4">
+        <div class="stat-card border-success">
+            <div class="stat-label">Sent This Week</div>
+            <div class="stat-value text-success"
+                 th:text="${reminderStats['sent_this_week'] ?: 0}">0</div>
+            <small class="text-muted">reminders sent</small>
+        </div>
+    </div>
+</div>
+
+<!-- ══ FILTER BUTTONS ═══════════════════════════════════ -->
+<div class="d-flex gap-2 flex-wrap mb-3">
+    <a th:href="@{/reminder/list(filter='PENDING')}"
+       class="btn btn-sm"
+       th:classappend="${activeFilter == 'PENDING'}
+           ? 'btn-warning' : 'btn-outline-warning'">
+        <i class="bi bi-clock me-1"></i>Pending
+    </a>
+    <a th:href="@{/reminder/list(filter='SENT')}"
+       class="btn btn-sm"
+       th:classappend="${activeFilter == 'SENT'}
+           ? 'btn-success' : 'btn-outline-success'">
+        <i class="bi bi-check2 me-1"></i>Sent
+    </a>
+    <a th:href="@{/reminder/list(filter='IGNORED')}"
+       class="btn btn-sm"
+       th:classappend="${activeFilter == 'IGNORED'}
+           ? 'btn-secondary' : 'btn-outline-secondary'">
+        <i class="bi bi-x me-1"></i>Ignored
+    </a>
+    <a th:href="@{/reminder/list(filter='ALL')}"
+       class="btn btn-sm"
+       th:classappend="${activeFilter == 'ALL'}
+           ? 'btn-dark' : 'btn-outline-dark'">
+        All
+        <span class="badge bg-secondary ms-1"
+              th:text="${reminderCount}">0</span>
+    </a>
+</div>
+
+<!-- ══ REMINDER CARDS ════════════════════════════════════
+     Each card = one reminder row from DB.
+     th:with="waPhone=..." builds the phone number
+     for WhatsApp URL safely — no SpEL, no T() calls.
+══════════════════════════════════════════════════════ -->
+<div th:if="${not #lists.isEmpty(reminders)}">
+
+    <div th:each="reminder : ${reminders}"
+         class="card mb-3 reminder-card">
+        <div class="card-body">
+            <div class="row g-3">
+
+                <!-- LEFT: info -->
+                <div class="col-lg-7">
+
+                    <!-- Name + badges -->
+                    <div class="d-flex justify-content-between
+                                align-items-start mb-2">
+                        <div>
+                            <h6 class="mb-1 fw-bold"
+                                th:text="${reminder.customerName}">—</h6>
+                            <div class="d-flex flex-wrap gap-2
+                                        align-items-center">
+                                <span class="car-number-plate"
+                                      th:text="${reminder.carNumber}">—</span>
+                                <a th:href="@{/bill/{id}(id=${reminder.billId})}"
+                                   class="text-decoration-none small fw-semibold"
+                                   th:text="${reminder.billNumber}">—</a>
+                                <!--
+                                    Days overdue badge.
+                                    daysOverdue > 0 = past due date.
+                                    daysOverdue <= 0 = not yet due
+                                    (shouldn't appear but safe check).
+                                -->
+                                <span th:if="${reminder.daysOverdue != null
+                                             and reminder.daysOverdue > 0}"
+                                      class="badge bg-danger"
+                                      style="font-size:11px"
+                                      th:text="${reminder.daysOverdue} + ' days overdue'">
+                                </span>
+                                <span th:if="${reminder.daysOverdue != null
+                                             and reminder.daysOverdue <= 0}"
+                                      class="badge bg-warning text-dark"
+                                      style="font-size:11px">Due soon</span>
+                            </div>
+                        </div>
+                        <!-- Status -->
+                        <div>
+                            <span th:if="${reminder.status == 'PENDING'}"
+                                  class="badge badge-pending">PENDING</span>
+                            <span th:if="${reminder.status == 'SENT'}"
+                                  class="badge badge-paid">SENT</span>
+                            <span th:if="${reminder.status == 'IGNORED'}"
+                                  class="badge bg-secondary">IGNORED</span>
+                        </div>
+                    </div>
+
+                    <!-- Balance -->
+                    <div class="mb-2 small">
+                        <span class="text-muted">Balance due: </span>
+                        <strong class="text-danger">
+                            &#8377;<span th:text="${#numbers.formatDecimal(
+                                reminder.balanceAmount ?: 0,
+                                1, 'COMMA', 0, 'POINT')}">0</span>
+                        </strong>
+                    </div>
+
+                    <!-- Message preview -->
+                    <div class="p-2 rounded small text-muted mb-2"
+                         style="background:var(--bs-light,#f8f9fa);
+                                border:.5px solid var(--color-border-tertiary);
+                                font-style:italic;word-break:break-word">
+                        <i class="bi bi-chat-text me-1"></i>
+                        <span th:text="${reminder.message}">—</span>
+                    </div>
+
+                </div>
+
+                <!-- RIGHT: action buttons -->
+                <div class="col-lg-5 d-flex flex-column
+                            justify-content-center gap-2">
+
+                    <!--
+                        WHATSAPP BUTTON — th:with builds the URL
+                        in safe pieces without any SpEL T() calls.
+
+                        th:with sets local variables:
+                        - waPhone: cleaned 10-digit number with 91 prefix
+                        - waMsg: the reminder message URL-encoded
+
+                        We use the message already stored in the DB
+                        (reminder.message) so no recalculation needed.
+                    -->
+                    <th:block th:if="${reminder.status == 'PENDING'}"
+                              th:with="
+                        rawPhone=${reminder.customerPhone != null
+                            ? reminder.customerPhone : ''},
+                        waMsg=${reminder.message != null
+                            ? reminder.message : 'Please pay pending balance'}">
+
+                        <!--
+                            Build WhatsApp URL using Thymeleaf's
+                            safe string concat. The message from DB
+                            is already plain text — we encode spaces
+                            as + signs using replace().
+                        -->
+                        <a th:href="@{'https://wa.me/91'
+                                     + ${rawPhone.replaceAll('[^0-9]','')}
+                                     + '?text='
+                                     + ${#strings.replace(waMsg,' ','+')}}"
+                           target="_blank"
+                           class="btn btn-success">
+                            <i class="bi bi-whatsapp me-2"></i>
+                            Send on WhatsApp
+                        </a>
+
+                    </th:block>
+
+                    <!-- Mark as Sent -->
+                    <form th:if="${reminder.status == 'PENDING'}"
+                          th:action="@{/reminder/sent}"
+                          method="post">
+                        <input type="hidden" name="id"
+                               th:value="${reminder.id}"/>
+                        <button type="submit"
+                                class="btn btn-outline-success w-100">
+                            <i class="bi bi-check2 me-1"></i>
+                            Mark as Sent
+                        </button>
+                    </form>
+
+                    <!-- Dismiss / Ignore -->
+                    <form th:if="${reminder.status == 'PENDING'}"
+                          th:action="@{/reminder/ignore}"
+                          method="post">
+                        <input type="hidden" name="id"
+                               th:value="${reminder.id}"/>
+                        <button type="submit"
+                                class="btn btn-outline-secondary w-100">
+                            <i class="bi bi-x me-1"></i>
+                            Dismiss
+                        </button>
+                    </form>
+
+                    <!-- View Bill -->
+                    <a th:href="@{/bill/{id}(id=${reminder.billId})}"
+                       class="btn btn-outline-primary">
+                        <i class="bi bi-eye me-1"></i>View Bill
+                    </a>
+
+                    <!-- Delete (only for SENT / IGNORED) -->
+                    <form th:if="${reminder.status != 'PENDING'}"
+                          th:action="@{/reminder/delete}"
+                          method="post"
+                          onsubmit="return confirm('Delete this reminder?')">
+                        <input type="hidden" name="id"
+                               th:value="${reminder.id}"/>
+                        <button type="submit"
+                                class="btn btn-outline-danger w-100 btn-sm">
+                            <i class="bi bi-trash me-1"></i>Delete
+                        </button>
+                    </form>
+
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- EMPTY STATE -->
+<div th:if="${#lists.isEmpty(reminders)}"
+     class="card">
+    <div class="card-body text-center py-5">
+        <i class="bi bi-bell-slash fs-1 text-muted d-block mb-3"></i>
+        <h5 class="text-muted mb-2">
+            No
+            <span th:text="${activeFilter == 'ALL'
+                ? 'reminders' : activeFilter.toLowerCase()
+                + ' reminders'}">reminders</span>
+        </h5>
+        <p class="text-muted small mb-3">
+            Click "Scan Overdue Bills" to automatically create
+            reminders for all unpaid overdue bills.
+        </p>
+        <form th:action="@{/reminder/scan}" method="post">
+            <button type="submit" class="btn btn-warning">
+                <i class="bi bi-search me-1"></i>Scan Now
+            </button>
+        </form>
+    </div>
+</div>
+
+</th:block>
+</body>
+</html>
