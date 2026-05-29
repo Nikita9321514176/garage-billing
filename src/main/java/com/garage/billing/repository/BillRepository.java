@@ -184,6 +184,51 @@ public class BillRepository {
     }
 
     // ─────────────────────────────────────────────────────────
+    // DELETE SERVICES BY BILL ID
+    // ─────────────────────────────────────────────────────────
+    public void deleteServicesByBillId(Long billId) {
+
+        String sql = """
+            DELETE FROM bill_services
+            WHERE bill_id = ?
+            """;
+
+        jdbcTemplate.update(sql, billId);
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // UPDATE BILL
+    // ─────────────────────────────────────────────────────────
+    public void updateBill(Bill bill) {
+
+        String sql = """
+            UPDATE bills
+            SET total_amount    = ?,
+                paid_amount     = ?,
+                balance_amount  = ?,
+                payment_status  = ?,
+                due_date        = ?,
+                notes           = ?
+            WHERE id = ?
+            """;
+
+        jdbcTemplate.update(
+                sql,
+                bill.getTotalAmount(),
+                bill.getPaidAmount(),
+                bill.getBalanceAmount(),
+                bill.getPaymentStatus(),
+
+                bill.getDueDate() != null
+                        ? java.sql.Date.valueOf(bill.getDueDate())
+                        : null,
+
+                bill.getNotes(),
+                bill.getId()
+        );
+    }
+
+    // ─────────────────────────────────────────────────────────
     // FIND BILL BY ID
     // ─────────────────────────────────────────────────────────
     public Optional<Bill> findById(Long id) {
@@ -288,6 +333,34 @@ public class BillRepository {
             """;
 
         return jdbcTemplate.query(sql, BILL_MAPPER, limit);
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // FIND BILLS BY DATE RANGE
+    // ─────────────────────────────────────────────────────────
+    public List<Bill> findByDateRange(
+            java.time.LocalDate fromDate,
+            java.time.LocalDate toDate) {
+
+        String sql = """
+            SELECT b.*,
+                   cu.name  AS customer_name,
+                   cu.phone AS customer_phone,
+                   c.car_number,
+                   c.car_model
+            FROM bills b
+            JOIN customers cu ON b.customer_id = cu.id
+            JOIN cars      c  ON b.car_id      = c.id
+            WHERE DATE(b.bill_date) BETWEEN ? AND ?
+            ORDER BY b.bill_date DESC
+            """;
+
+        return jdbcTemplate.query(
+                sql,
+                BILL_MAPPER,
+                java.sql.Date.valueOf(fromDate),
+                java.sql.Date.valueOf(toDate)
+        );
     }
 
     // ─────────────────────────────────────────────────────────

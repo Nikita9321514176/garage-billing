@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 import java.util.HashMap;
 import java.util.List;
@@ -74,6 +75,61 @@ public class BillService {
             BillServiceItem item = services.get(i);
 
             item.setBillId(billId);
+
+            item.setSortOrder(i + 1);
+
+            billRepository.saveService(item);
+        }
+
+        return bill;
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // UPDATE BILL WITH SERVICES
+    // ─────────────────────────────────────────────────────────
+    @Transactional
+    public Bill updateBillWithServices(
+            Bill bill,
+            List<BillServiceItem> newServices) {
+
+        // Step 1: Calculate new total from edited services
+        BigDecimal newTotal = newServices.stream()
+                .map(BillServiceItem::getAmount)
+                .filter(a -> a != null)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // Step 2: Keep current paid amount
+        BigDecimal currentPaid = bill.getPaidAmount() != null
+                ? bill.getPaidAmount()
+                : BigDecimal.ZERO;
+
+        // Step 3: Recalculate balance
+        BigDecimal newBalance = newTotal.subtract(currentPaid);
+
+        if (newBalance.compareTo(BigDecimal.ZERO) < 0) {
+            newBalance = BigDecimal.ZERO;
+        }
+
+        // Step 4: Determine payment status
+        String newStatus = determineStatus(newTotal, currentPaid);
+
+        // Step 5: Update bill object
+        bill.setTotalAmount(newTotal);
+        bill.setBalanceAmount(newBalance);
+        bill.setPaymentStatus(newStatus);
+
+        // Step 6: Update bill in DB
+        billRepository.updateBill(bill);
+
+        // Step 7: Delete old services
+        billRepository.deleteServicesByBillId(bill.getId());
+
+        // Step 8: Save new services
+        for (int i = 0; i < newServices.size(); i++) {
+
+            BillServiceItem item = newServices.get(i);
+
+            item.setBillId(bill.getId());
 
             item.setSortOrder(i + 1);
 
@@ -149,6 +205,19 @@ public class BillService {
     public List<Bill> getRecentBills(int limit) {
 
         return billRepository.findRecent(limit);
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // GET BILLS BY DATE RANGE
+    // ─────────────────────────────────────────────────────────
+    public List<Bill> getBillsByDateRange(
+            LocalDate fromDate,
+            LocalDate toDate) {
+
+        return billRepository.findByDateRange(
+                fromDate,
+                toDate
+        );
     }
 
     // ─────────────────────────────────────────────────────────

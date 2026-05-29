@@ -99,6 +99,192 @@ public class BillController {
     }
 
     // ─────────────────────────────────────────────────────────
+    // SHOW EDIT FORM
+    // URL: GET /bill/{id}/edit
+    // ─────────────────────────────────────────────────────────
+    @GetMapping("/{id}/edit")
+    public String showEditForm(
+            @PathVariable Long id,
+            Model model,
+            RedirectAttributes redirectAttributes) {
+
+        // Load the bill with all its services
+        Optional<Bill> billOpt = billService.findById(id);
+
+        if (billOpt.isEmpty()) {
+            redirectAttributes.addFlashAttribute(
+                    "errorMessage", "Bill not found: " + id);
+            return "redirect:/bill/list";
+        }
+
+        Bill bill = billOpt.get();
+
+        // Pass the bill to the template
+        model.addAttribute("bill", bill);
+        model.addAttribute("services", bill.getServices());
+
+        // Create BillForm for Thymeleaf form binding
+        BillForm billForm = new BillForm();
+
+        billForm.setInitialPayment(bill.getPaidAmount());
+        billForm.setNotes(bill.getNotes());
+
+        if (bill.getDueDate() != null) {
+            billForm.setDueDate(bill.getDueDate().toString());
+        }
+
+        // Load service lines into form
+        List<BillForm.ServiceLine> serviceLines =
+                new ArrayList<>();
+
+        if (bill.getServices() != null) {
+
+            for (BillServiceItem item : bill.getServices()) {
+
+                BillForm.ServiceLine line =
+                        new BillForm.ServiceLine();
+
+                line.setServiceName(item.getServiceName());
+                line.setDescription(item.getDescription());
+                line.setAmount(item.getAmount());
+
+                serviceLines.add(line);
+            }
+        }
+
+        billForm.setServices(serviceLines);
+
+        model.addAttribute("billForm", billForm);
+
+        // Load customers for dropdowns
+        model.addAttribute(
+                "customers",
+                customerService.findAll()
+        );
+
+        return "bill/edit";
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // SAVE EDITED BILL
+    // URL: POST /bill/{id}/edit
+    // ─────────────────────────────────────────────────────────
+    @PostMapping("/{id}/edit")
+    public String saveEditedBill(
+            @PathVariable Long id,
+            @ModelAttribute("billForm") BillForm billForm,
+            RedirectAttributes redirectAttributes) {
+
+        try {
+
+            // Load existing bill
+            Bill bill = billService.findById(id)
+                    .orElseThrow(() ->
+                            new RuntimeException(
+                                    "Bill not found: " + id));
+
+            // Update due date
+            if (billForm.getDueDate() != null
+                    && !billForm.getDueDate().isEmpty()) {
+
+                try {
+
+                    bill.setDueDate(
+                            LocalDate.parse(
+                                    billForm.getDueDate().trim()
+                            )
+                    );
+
+                } catch (Exception ignored) {
+                }
+            }
+
+            // Update notes
+            bill.setNotes(billForm.getNotes());
+
+            // Update paid amount
+            if (billForm.getInitialPayment() != null) {
+                bill.setPaidAmount(
+                        billForm.getInitialPayment()
+                );
+            }
+
+            // Parse edited services
+            List<BillServiceItem> serviceItems =
+                    new ArrayList<>();
+
+            if (billForm.getServices() != null) {
+
+                int order = 1;
+
+                for (BillForm.ServiceLine line
+                        : billForm.getServices()) {
+
+                    // Skip blank rows
+                    if (line.getServiceName() == null
+                            || line.getServiceName()
+                            .trim().isEmpty()) {
+                        continue;
+                    }
+
+                    if (line.getAmount() == null
+                            || line.getAmount()
+                            .compareTo(BigDecimal.ZERO) <= 0) {
+                        continue;
+                    }
+
+                    serviceItems.add(
+
+                            BillServiceItem.builder()
+                                    .serviceName(
+                                            line.getServiceName().trim()
+                                    )
+                                    .description(
+                                            line.getDescription() != null
+                                                    ? line.getDescription().trim()
+                                                    : null
+                                    )
+                                    .amount(line.getAmount())
+                                    .sortOrder(order++)
+                                    .build()
+                    );
+                }
+            }
+
+            if (serviceItems.isEmpty()) {
+
+                throw new RuntimeException(
+                        "Bill must have at least one service"
+                );
+            }
+
+            // Save updated bill
+            billService.updateBillWithServices(
+                    bill,
+                    serviceItems
+            );
+
+            redirectAttributes.addFlashAttribute(
+                    "successMessage",
+                    "Bill "
+                            + bill.getBillNumber()
+                            + " updated successfully!"
+            );
+
+            return "redirect:/bill/" + id;
+
+        } catch (Exception e) {
+
+            redirectAttributes.addFlashAttribute(
+                    "errorMessage",
+                    "Error updating bill: " + e.getMessage()
+            );
+
+            return "redirect:/bill/" + id + "/edit";
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────
     // AJAX: LOAD CARS FOR CUSTOMER
     // URL: GET /bill/cars?customerId=5
     // ─────────────────────────────────────────────────────────
@@ -419,22 +605,18 @@ public class BillController {
 
         try {
 
-            // Generate PDF bytes
-            byte[] pdfBytes = pdfService.generateBillPdf(id);
+            byte[] pdfBytes =
+                    pdfService.generateBillPdf(id);
 
-            // Content type
             response.setContentType("application/pdf");
 
-            // Download file name
             response.setHeader(
                     "Content-Disposition",
                     "attachment; filename=\"Invoice-"
                             + id + ".pdf\"");
 
-            // File size
             response.setContentLength(pdfBytes.length);
 
-            // Write PDF to response
             response.getOutputStream().write(pdfBytes);
             response.getOutputStream().flush();
 
@@ -449,20 +631,76 @@ public class BillController {
                         "Error generating PDF: "
                                 + e.getMessage());
 
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
         }
     }
 
     // ─────────────────────────────────────────────────────────
     // BILL LIST
     // URL: GET /bill/list
+    // URL: GET /bill/list?from=2024-05-01&to=2024-05-31
     // ─────────────────────────────────────────────────────────
     @GetMapping("/list")
-    public String listBills(Model model) {
+    public String listBills(
+            @RequestParam(value = "from", required = false)
+                    String from,
+
+            @RequestParam(value = "to", required = false)
+                    String to,
+
+            Model model
+    ) {
+
+        List<Bill> bills;
+
+        boolean isFiltered = false;
+
+        // If BOTH dates are provided, filter by range
+        if (from != null && !from.isEmpty()
+                && to != null && !to.isEmpty()) {
+
+            try {
+
+                LocalDate fromDate =
+                        LocalDate.parse(from);
+
+                LocalDate toDate =
+                        LocalDate.parse(to);
+
+                bills = billService.getBillsByDateRange(
+                        fromDate,
+                        toDate
+                );
+
+                isFiltered = true;
+
+                // Keep dates in form fields
+                model.addAttribute("fromDate", from);
+                model.addAttribute("toDate", to);
+
+            } catch (Exception e) {
+
+                // Invalid date format
+                bills = billService.getRecentBills(50);
+            }
+
+        } else {
+
+            // Default recent bills
+            bills = billService.getRecentBills(50);
+        }
+
+        model.addAttribute("bills", bills);
 
         model.addAttribute(
-                "bills",
-                billService.getRecentBills(50)
+                "billCount",
+                bills.size()
+        );
+
+        model.addAttribute(
+                "isFiltered",
+                isFiltered
         );
 
         return "bill/list";

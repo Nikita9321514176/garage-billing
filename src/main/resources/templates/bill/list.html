@@ -5,26 +5,139 @@
 
 <div class="page-header">
     <h2>
-        <i class="bi bi-receipt me-2 text-primary"></i>All Bills
+        <i class="bi bi-receipt me-2 text-primary"></i>
+        All Bills
+        <!--
+            Show bill count. isFiltered = true means a
+            date range was applied, so we show "filtered"
+            message. Otherwise show "recent 50".
+        -->
+        <span class="badge bg-secondary ms-2"
+              th:text="${billCount} + ' bills'">0</span>
     </h2>
-
-    <a th:href="@{/bill/new}" class="btn btn-primary">
+    <a th:href="@{/bill/new}" class="btn btn-primary btn-sm">
         <i class="bi bi-plus-lg me-1"></i>New Bill
     </a>
 </div>
 
-<div class="card">
+<!-- ══ DATE FILTER CARD ══════════════════════════════════
+     method="get" — correct for search/filter forms.
+     The dates appear in the URL: /bill/list?from=...&to=...
+     This makes the filtered view bookmarkable and shareable.
+══════════════════════════════════════════════════════ -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form th:action="@{/bill/list}" method="get">
+            <div class="row g-2 align-items-end">
 
-    <div class="card-header bg-dark text-white">
-        <i class="bi bi-table me-2"></i>Bill History
+                <div class="col-md-3">
+                    <label class="form-label small fw-semibold">
+                        From Date
+                    </label>
+                    <!--
+                        th:value="${fromDate}" pre-fills the date
+                        after filtering so it stays in the box.
+                        Without this, dates clear after submit.
+                    -->
+                    <input type="date"
+                           name="from"
+                           class="form-control"
+                           th:value="${fromDate}"/>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label small fw-semibold">
+                        To Date
+                    </label>
+                    <input type="date"
+                           name="to"
+                           class="form-control"
+                           th:value="${toDate}"/>
+                </div>
+
+                <div class="col-md-2">
+                    <button type="submit"
+                            class="btn btn-primary w-100">
+                        <i class="bi bi-funnel me-1"></i>
+                        Filter
+                    </button>
+                </div>
+
+                <div class="col-md-2">
+                    <!--
+                        Clear button — simply links to /bill/list
+                        with no parameters → resets to default view
+                    -->
+                    <a th:href="@{/bill/list}"
+                       class="btn btn-outline-secondary w-100">
+                        <i class="bi bi-x-circle me-1"></i>
+                        Clear
+                    </a>
+                </div>
+
+                <!-- Quick filter buttons for common ranges -->
+                <div class="col-md-12">
+                    <div class="d-flex gap-2 flex-wrap mt-1">
+                        <small class="text-muted align-self-center">
+                            Quick:
+                        </small>
+                        <!--
+                            These buttons use JavaScript to set the
+                            date inputs and submit the form.
+                        -->
+                        <button type="button"
+                                class="btn btn-sm btn-outline-secondary"
+                                onclick="setThisMonth()">
+                            This month
+                        </button>
+                        <button type="button"
+                                class="btn btn-sm btn-outline-secondary"
+                                onclick="setLastMonth()">
+                            Last month
+                        </button>
+                        <button type="button"
+                                class="btn btn-sm btn-outline-secondary"
+                                onclick="setThisYear()">
+                            This year
+                        </button>
+                        <button type="button"
+                                class="btn btn-sm btn-outline-secondary"
+                                onclick="setLast7Days()">
+                            Last 7 days
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </form>
     </div>
+</div>
 
+<!-- Active filter notification -->
+<div th:if="${isFiltered}"
+     class="alert alert-info d-flex align-items-center mb-3">
+    <i class="bi bi-funnel-fill me-2"></i>
+    Showing bills from
+    <strong class="mx-1"
+            th:text="${fromDate}">—</strong>
+    to
+    <strong class="mx-1"
+            th:text="${toDate}">—</strong>
+    &nbsp;·&nbsp;
+    <span th:text="${billCount}">0</span> bills found.
+    <a th:href="@{/bill/list}"
+       class="ms-2 alert-link">Clear filter</a>
+</div>
+
+<!-- ══ BILLS TABLE ════════════════════════════════════ -->
+<div class="card">
+    <div class="card-header bg-dark text-white">
+        <i class="bi bi-table me-2"></i>
+        Bill History
+    </div>
     <div class="card-body p-0">
-
         <div class="table-responsive">
-
             <table class="table table-hover mb-0">
-
                 <thead>
                     <tr>
                         <th>Bill No.</th>
@@ -38,124 +151,141 @@
                         <th></th>
                     </tr>
                 </thead>
-
                 <tbody>
-
                     <tr th:each="bill : ${bills}">
-
                         <td>
                             <a th:href="@{/bill/{id}(id=${bill.id})}"
                                class="fw-semibold text-decoration-none"
                                th:text="${bill.billNumber}">—</a>
                         </td>
-
                         <td class="text-muted small"
                             th:text="${bill.billDate != null ?
-                                #temporals.format(
-                                    bill.billDate,
-                                    'dd MMM yy'
-                                ) : '—'}">—</td>
-
+                                #temporals.format(bill.billDate,
+                                'dd MMM yyyy') : '—'}">—</td>
                         <td th:text="${bill.customerName}">—</td>
-
                         <td>
                             <span class="car-number-plate"
                                   th:text="${bill.carNumber}">—</span>
                         </td>
-
-                        <td class="text-end">
+                        <td class="text-end fw-semibold">
                             &#8377;<span th:text="${#numbers.formatDecimal(
-                                bill.totalAmount,
-                                1,
-                                'COMMA',
-                                0,
-                                'POINT')}">0</span>
+                                bill.totalAmount,1,'COMMA',0,'POINT')}">
+                            </span>
                         </td>
-
                         <td class="text-end text-success">
                             &#8377;<span th:text="${#numbers.formatDecimal(
-                                bill.paidAmount,
-                                1,
-                                'COMMA',
-                                0,
-                                'POINT')}">0</span>
+                                bill.paidAmount,1,'COMMA',0,'POINT')}">
+                            </span>
                         </td>
-
-                        <td class="text-end text-danger">
+                        <td class="text-end"
+                            th:classappend="${bill.balanceAmount != null
+                                and bill.balanceAmount.doubleValue() > 0}
+                                ? 'text-danger' : 'text-muted'">
                             &#8377;<span th:text="${#numbers.formatDecimal(
-                                bill.balanceAmount,
-                                1,
-                                'COMMA',
-                                0,
-                                'POINT')}">0</span>
+                                bill.balanceAmount,1,'COMMA',0,'POINT')}">
+                            </span>
                         </td>
-
                         <td>
-
                             <th:block th:with="st=${bill.paymentStatus}">
-
                                 <span th:if="${st == 'PAID'}"
-                                      class="badge badge-paid">
-                                    PAID
-                                </span>
-
+                                      class="badge badge-paid">PAID</span>
                                 <span th:if="${st == 'PARTIAL'}"
                                       class="badge badge-partial">
-                                    PARTIAL
-                                </span>
-
+                                      PARTIAL</span>
                                 <span th:if="${st == 'PENDING'}"
                                       class="badge badge-pending">
-                                    PENDING
-                                </span>
-
+                                      PENDING</span>
                             </th:block>
-
                         </td>
-
-                        <!-- ACTIONS -->
                         <td>
-
-                            <!-- VIEW BUTTON -->
-                            <a th:href="@{/bill/{id}(id=${bill.id})}"
-                               class="btn btn-sm btn-outline-primary">
-                                <i class="bi bi-eye"></i>
-                            </a>
-
-                            <!-- DOWNLOAD PDF BUTTON -->
-                            <a th:href="@{/bill/{id}/pdf(id=${bill.id})}"
-                               class="btn btn-sm btn-outline-danger ms-1"
-                               title="Download PDF">
-                                <i class="bi bi-file-pdf"></i>
-                            </a>
-
+                            <div class="d-flex gap-1">
+                                <a th:href="@{/bill/{id}(id=${bill.id})}"
+                                   class="btn btn-sm btn-outline-primary"
+                                   title="View">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a th:href="@{/bill/{id}/pdf(id=${bill.id})}"
+                                   class="btn btn-sm btn-outline-danger"
+                                   title="Download PDF">
+                                    <i class="bi bi-file-pdf"></i>
+                                </a>
+                                <a th:href="@{/bill/{id}/edit(id=${bill.id})}"
+                                   class="btn btn-sm btn-outline-warning"
+                                   title="Edit">
+                                    <i class="bi bi-pencil-square"></i>
+                                </a>
+                            </div>
                         </td>
-
                     </tr>
 
-                    <!-- EMPTY STATE -->
                     <tr th:if="${#lists.isEmpty(bills)}">
-
                         <td colspan="9"
-                            class="text-center text-muted py-4">
-
+                            class="text-center text-muted py-5">
                             <i class="bi bi-inbox fs-2 d-block mb-2"></i>
-
-                            No bills found.
-
+                            <span th:if="${isFiltered}">
+                                No bills found in this date range.
+                                <a th:href="@{/bill/list}">
+                                    Clear filter
+                                </a>
+                            </span>
+                            <span th:unless="${isFiltered}">
+                                No bills yet.
+                                <a th:href="@{/bill/new}">
+                                    Create the first bill
+                                </a>
+                            </span>
                         </td>
-
                     </tr>
-
                 </tbody>
-
             </table>
-
         </div>
-
     </div>
-
 </div>
+
+<script>
+// Helper: format a date as YYYY-MM-DD for the input field
+function fmt(d) {
+    return d.toISOString().slice(0,10);
+}
+
+// Sets the date inputs and submits the filter form
+function applyFilter(from, to) {
+    document.querySelector('input[name="from"]').value = fmt(from);
+    document.querySelector('input[name="to"]').value   = fmt(to);
+    // Submit the form programmatically
+    document.querySelector('form').submit();
+}
+
+function setThisMonth() {
+    var now   = new Date();
+    // First day of current month: day = 1
+    var start = new Date(now.getFullYear(), now.getMonth(), 1);
+    // Last day: month+1, day 0 = last day of current month
+    var end   = new Date(now.getFullYear(), now.getMonth()+1, 0);
+    applyFilter(start, end);
+}
+
+function setLastMonth() {
+    var now   = new Date();
+    var start = new Date(now.getFullYear(), now.getMonth()-1, 1);
+    var end   = new Date(now.getFullYear(), now.getMonth(), 0);
+    applyFilter(start, end);
+}
+
+function setThisYear() {
+    var y     = new Date().getFullYear();
+    var start = new Date(y, 0, 1);   // Jan 1
+    var end   = new Date(y, 11, 31); // Dec 31
+    applyFilter(start, end);
+}
+
+function setLast7Days() {
+    var end   = new Date();
+    var start = new Date();
+    start.setDate(start.getDate() - 7);
+    applyFilter(start, end);
+}
+</script>
 
 </th:block>
 </body>

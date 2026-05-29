@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body th:replace="~{layout/base :: layout(~{::content})}">
+<th:block th:fragment="content">
+
+<div class="page-header">
+    <h2>
+        <i class="bi bi-pencil-square me-2 text-warning"></i>
+        Edit Bill:
+        <span th:text="${bill.billNumber}">—</span>
+    </h2>
+    <a th:href="@{/bill/{id}(id=${bill.id})}"
+       class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>Cancel
+    </a>
+</div>
+
+<!--
+    Important notice at the top — explains what can and
+    cannot be changed. The customer and car cannot be
+    changed because that would corrupt financial history.
+-->
+<div class="alert alert-info mb-4">
+    <i class="bi bi-info-circle me-2"></i>
+    <strong>What you can edit:</strong>
+    services, amounts, due date, notes, payment received.
+    <br>
+    <strong>What cannot be changed:</strong>
+    bill number, customer, and car
+    (changing these would corrupt payment history).
+</div>
+
+<!--
+    th:action="@{/bill/{id}/edit(id=${bill.id})}"
+    Posts to /bill/5/edit — Spring updates bill with id=5.
+    th:action adds CSRF token automatically.
+-->
+<form th:action="@{/bill/{id}/edit(id=${bill.id})}"
+      method="post" id="billForm">
+
+<div class="row g-4">
+
+    <!-- ══ LEFT COLUMN ════════════════════════════════ -->
+    <div class="col-lg-7">
+
+        <!-- Read-only customer and car info -->
+        <div class="card mb-3">
+            <div class="card-header bg-secondary text-white">
+                <i class="bi bi-info-circle me-2"></i>
+                Bill Information (read-only)
+            </div>
+            <div class="card-body">
+                <div class="row g-2">
+                    <div class="col-md-4">
+                        <label class="form-label small text-muted">
+                            Bill Number
+                        </label>
+                        <input type="text"
+                               class="form-control"
+                               th:value="${bill.billNumber}"
+                               disabled/>
+                        <!-- disabled = shown but not submitted -->
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small text-muted">
+                            Customer
+                        </label>
+                        <input type="text"
+                               class="form-control"
+                               th:value="${bill.customerName}"
+                               disabled/>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small text-muted">
+                            Car Number
+                        </label>
+                        <input type="text"
+                               class="form-control car-number-plate"
+                               th:value="${bill.carNumber}"
+                               disabled/>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Editable services section -->
+        <div class="card">
+            <div class="card-header bg-warning text-dark
+                        d-flex justify-content-between
+                        align-items-center">
+                <span>
+                    <i class="bi bi-tools me-2"></i>
+                    Edit Services
+                </span>
+                <button type="button"
+                        class="btn btn-sm btn-dark"
+                        onclick="addServiceRow()">
+                    <i class="bi bi-plus-lg me-1"></i>
+                    Add Service
+                </button>
+            </div>
+            <div class="card-body">
+
+                <!-- Column headers -->
+                <div class="row g-2 mb-2 d-none d-md-flex">
+                    <div class="col-md-4">
+                        <small class="text-muted fw-semibold">
+                            SERVICE NAME *
+                        </small>
+                    </div>
+                    <div class="col-md-4">
+                        <small class="text-muted fw-semibold">
+                            DESCRIPTION
+                        </small>
+                    </div>
+                    <div class="col-md-3">
+                        <small class="text-muted fw-semibold">
+                            AMOUNT *
+                        </small>
+                    </div>
+                </div>
+
+                <div id="serviceRowsContainer">
+                    <!--
+                        th:each loops through the existing services
+                        and creates a pre-filled row for each one.
+
+                        th:value="${svc.serviceName}" pre-fills
+                        the service name from the database.
+
+                        The name attribute uses the loop index
+                        (iterStat.index) to create the array:
+                        services[0].serviceName
+                        services[1].serviceName
+                        etc.
+                    -->
+                    <div th:each="svc, iterStat : ${services}"
+                         class="service-row"
+                         th:id="'serviceRow_' + ${iterStat.index}">
+                        <div class="row g-2 align-items-center">
+                            <div class="col-md-4">
+                                <input type="text"
+                                       th:name="'services[' + ${iterStat.index} + '].serviceName'"
+                                       class="form-control form-control-sm"
+                                       th:value="${svc.serviceName}"
+                                       placeholder="Service name"
+                                       required/>
+                            </div>
+                            <div class="col-md-4">
+                                <input type="text"
+                                       th:name="'services[' + ${iterStat.index} + '].description'"
+                                       class="form-control form-control-sm"
+                                       th:value="${svc.description}"
+                                       placeholder="Description (optional)"/>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text">
+                                        &#8377;
+                                    </span>
+                                    <input type="number"
+                                           th:name="'services[' + ${iterStat.index} + '].amount'"
+                                           class="form-control form-control-sm amount-input"
+                                           th:value="${svc.amount}"
+                                           min="0"
+                                           step="0.01"
+                                           oninput="calculateTotal()"
+                                           required/>
+                                </div>
+                            </div>
+                            <div class="col-md-1 text-center">
+                                <button type="button"
+                                        class="btn btn-outline-danger btn-sm"
+                                        th:onclick="'removeRow(\'serviceRow_' + ${iterStat.index} + '\')'">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </div><!-- /left col -->
+
+    <!-- ══ RIGHT COLUMN ═══════════════════════════════ -->
+    <div class="col-lg-5">
+        <div class="card sticky-top" style="top:80px">
+            <div class="card-header bg-warning text-dark">
+                <i class="bi bi-receipt me-2"></i>
+                Updated Summary
+            </div>
+            <div class="card-body">
+
+                <!-- New total display (updates live) -->
+                <div class="d-flex justify-content-between
+                            align-items-center mb-3 pb-2
+                            border-bottom">
+                    <span class="text-muted">New Total</span>
+                    <span id="totalAmountDisplay"
+                          class="fw-bold fs-4 text-primary">
+                        &#8377;0.00
+                    </span>
+                </div>
+                <input type="hidden"
+                       id="totalAmountHidden"
+                       name="totalAmount"
+                       value="0"/>
+
+                <!-- Payment received (editable) -->
+                <div class="mb-3">
+                    <label class="form-label">
+                        Payment Received
+                    </label>
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            &#8377;
+                        </span>
+                        <input type="number"
+                               id="initialPayment"
+                               name="initialPayment"
+                               class="form-control"
+                               th:value="${bill.paidAmount}"
+                               min="0"
+                               step="0.01"
+                               oninput="calculateTotal()"/>
+                    </div>
+                </div>
+
+                <!-- Balance -->
+                <div class="d-flex justify-content-between
+                            align-items-center mb-3 pb-2
+                            border-bottom">
+                    <span class="text-muted">Balance Due</span>
+                    <span id="balanceDisplay"
+                          class="fw-bold text-danger fs-5">
+                        &#8377;0.00
+                    </span>
+                </div>
+
+                <!-- Status preview -->
+                <div class="d-flex justify-content-between
+                            align-items-center mb-3">
+                    <span class="text-muted">Status</span>
+                    <span id="statusPreview"
+                          class="badge badge-pending">
+                        PENDING
+                    </span>
+                </div>
+
+                <!-- Due date -->
+                <div class="mb-3">
+                    <label class="form-label">
+                        Due Date
+                    </label>
+                    <input type="date"
+                           name="dueDate"
+                           class="form-control"
+                           th:value="${bill.dueDate}"/>
+                </div>
+
+                <!-- Notes -->
+                <div class="mb-3">
+                    <label class="form-label">Notes</label>
+                    <textarea name="notes"
+                              class="form-control"
+                              rows="2"
+                              th:text="${bill.notes}">
+                    </textarea>
+                </div>
+
+                <hr/>
+
+                <div class="d-grid gap-2">
+                    <button type="submit"
+                            class="btn btn-warning btn-lg fw-semibold">
+                        <i class="bi bi-save me-2"></i>
+                        Save Changes
+                    </button>
+                    <a th:href="@{/bill/{id}(id=${bill.id})}"
+                       class="btn btn-outline-secondary">
+                        Cancel — discard changes
+                    </a>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+</div>
+</form>
+
+<!--
+    JavaScript: we need to track the existing row count
+    so new rows added via "+ Add Service" get the correct
+    array index (continuing from where the existing ones end).
+
+    th:inline="javascript" lets Thymeleaf inject the Java
+    value ${services.size()} directly into the JS variable.
+-->
+<script th:inline="javascript">
+/*<![CDATA[*/
+// Start rowCount from existing service count
+// so new rows get correct indices: services[2], services[3] etc.
+rowCount = /*[[${services != null ? services.size() : 1}]]*/ 1;
+
+document.addEventListener('DOMContentLoaded', function() {
+    calculateTotal();
+    var paidInput = document.getElementById('initialPayment');
+    if (paidInput) {
+        paidInput.addEventListener('input', calculateTotal);
+    }
+});
+/*]]>*/
+</script>
+
+</th:block>
+</body>
+</html>
