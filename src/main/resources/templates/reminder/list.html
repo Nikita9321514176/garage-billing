@@ -8,12 +8,12 @@
         <i class="bi bi-bell-fill me-2 text-warning"></i>
         Payment Reminders
     </h2>
-    <form th:action="@{/reminder/scan}" method="post">
-        <button type="submit" class="btn btn-warning">
-            <i class="bi bi-search me-1"></i>
-            Scan Overdue Bills
-        </button>
-    </form>
+	<form th:action="@{/reminder/scan}" method="post">
+	    <button type="submit" class="btn btn-warning">
+	        <i class="bi bi-bell-fill me-1"></i>
+	        Create Reminders for Overdue Bills
+	    </button>
+	</form>
 </div>
 
 <!-- ══ STAT CARDS ══════════════════════════════════════ -->
@@ -45,6 +45,17 @@
             <small class="text-muted">reminders sent</small>
         </div>
     </div>
+</div>
+
+<!-- INFO BOX -->
+<div class="alert alert-info mb-3 small">
+    <i class="bi bi-info-circle me-2"></i>
+    <strong>How reminders work:</strong>
+    Reminders are notification records only — they do not affect
+    bill payment status. A bill remains PENDING until actual payment
+    is recorded. "Dismiss" removes the reminder notification only —
+    the bill balance stays unchanged. Payment is tracked separately
+    in the Payments section.
 </div>
 
 <!-- ══ FILTER BUTTONS ═══════════════════════════════════ -->
@@ -209,17 +220,17 @@
                     </form>
 
                     <!-- Dismiss / Ignore -->
-                    <form th:if="${reminder.status == 'PENDING'}"
-                          th:action="@{/reminder/ignore}"
-                          method="post">
-                        <input type="hidden" name="id"
-                               th:value="${reminder.id}"/>
-                        <button type="submit"
-                                class="btn btn-outline-secondary w-100">
-                            <i class="bi bi-x me-1"></i>
-                            Dismiss
-                        </button>
-                    </form>
+					<form th:if="${reminder.status == 'PENDING'}"
+					      th:action="@{/reminder/ignore}"
+					      method="post">
+					    <input type="hidden" name="id"
+					           th:value="${reminder.id}"/>
+					    <button type="submit"
+					            class="btn btn-outline-secondary w-100">
+					        <i class="bi bi-x me-1"></i>
+					        Dismiss Reminder (bill still unpaid)
+					    </button>
+					</form>
 
                     <!-- View Bill -->
                     <a th:href="@{/bill/{id}(id=${reminder.billId})}"

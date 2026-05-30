@@ -27,18 +27,25 @@ public class CustomerService {
     // If not, create and return new customer
     // This is called "find or create" pattern
     public Customer findOrCreate(String name, String phone, String email) {
-        Optional<Customer> existing = customerRepository.findByPhone(phone);
+
+        Optional<Customer> existing =
+                customerRepository.findByPhone(phone);
+
         if (existing.isPresent()) {
             return existing.get(); // customer already in DB, reuse
         }
+
         // New customer — build and save
         Customer newCustomer = Customer.builder()
-            .name(name)
-            .phone(phone)
-            .email(email)
-            .build();
+                .name(name)
+                .phone(phone)
+                .email(email)
+                .build();
+
         Long id = customerRepository.save(newCustomer);
+
         newCustomer.setId(id);
+
         return newCustomer;
     }
 
@@ -52,6 +59,16 @@ public class CustomerService {
 
     public List<Customer> findAll() {
         return customerRepository.findAll();
+    }
+
+    // SEARCH CUSTOMERS BY NAME
+    public List<Customer> searchByName(String name) {
+
+        if (name == null || name.trim().isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+
+        return customerRepository.searchByName(name);
     }
 
     // Get all cars belonging to a customer

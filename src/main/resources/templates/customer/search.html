@@ -10,22 +10,25 @@
     </h2>
 </div>
 
-<!-- Search box -->
+<!-- Search by name form -->
 <div class="card mb-4">
     <div class="card-body">
-        <form th:action="@{/customer/search}" method="get">
+        <form th:action="@{/customer/searchByName}" method="get">
             <div class="row g-2 align-items-end">
                 <div class="col-md-8">
                     <label class="form-label fw-semibold">
-                        Search by Phone Number
+                        Search by Customer Name
                     </label>
-                    <input type="tel"
-                           name="phone"
+                    <input type="text"
+                           name="name"
                            class="form-control form-control-lg"
-                           placeholder="Enter 10-digit mobile number"
-                           th:value="${searchPhone}"
+                           placeholder="Enter customer name (partial is fine)"
+                           th:value="${searchName}"
                            autofocus
                            autocomplete="off"/>
+                    <div class="form-text">
+                        Type any part of the name — e.g. "ravi" finds "Ravi Kumar"
+                    </div>
                 </div>
                 <div class="col-md-4">
                     <button type="submit"
@@ -38,111 +41,72 @@
     </div>
 </div>
 
-<!-- Not found -->
-<div th:if="${notFound}" class="alert alert-warning">
-    <i class="bi bi-exclamation-triangle me-2"></i>
-    No customer found with phone
-    <strong th:text="${searchPhone}">—</strong>.
-    <a th:href="@{/customer/new}" class="alert-link ms-2">
-        Add new customer
-    </a>
-</div>
+<!-- Search results -->
+<div th:if="${searchResults != null}">
 
-<!-- Found: show customer + cars -->
-<div th:if="${customer != null}">
-    <div class="row g-3">
-
-        <div class="col-md-5">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <i class="bi bi-person-badge me-2"></i>
-                    Customer Found
-                </div>
-                <div class="card-body p-0">
-                    <table class="table table-borderless table-sm mb-0">
-                        <tr>
-                            <td class="text-muted ps-3">Name</td>
-                            <td class="fw-semibold pe-3"
-                                th:text="${customer.name}">—</td>
-                        </tr>
-                        <tr>
-                            <td class="text-muted ps-3">Phone</td>
-                            <td th:text="${customer.phone}">—</td>
-                        </tr>
-                        <tr>
-                            <td class="text-muted ps-3">Email</td>
-                            <td th:text="${customer.email ?: '—'}">—</td>
-                        </tr>
-                        <tr>
-                            <td class="text-muted ps-3">Since</td>
-                            <td th:text="${customer.createdAt != null ?
-                                #temporals.format(customer.createdAt,
-                                'dd MMM yyyy') : '—'}">—</td>
-                        </tr>
-                    </table>
-                </div>
-                <div class="card-footer bg-transparent">
-                    <a th:href="@{/customer/{id}(id=${customer.id})}"
-                       class="btn btn-primary btn-sm me-2">
-                        <i class="bi bi-person me-1"></i>Full Profile
-                    </a>
-                    <a th:href="@{/bill/new(customerId=${customer.id})}"
-                       class="btn btn-outline-primary btn-sm">
-                        <i class="bi bi-file-earmark-plus me-1"></i>New Bill
-                    </a>
-                </div>
-            </div>
-        </div>
-
-        <!-- Their cars -->
-        <div class="col-md-7">
-            <div class="card">
-                <div class="card-header bg-dark text-white">
-                    <i class="bi bi-car-front me-2"></i>
-                    Registered Cars
-                </div>
-                <div class="card-body p-0">
-                    <table class="table table-hover mb-0">
-                        <thead>
-                            <tr>
-                                <th>Car Number</th>
-                                <th>Model</th>
-                                <th>Brand</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr th:each="car : ${cars}">
-                                <td>
-                                    <span class="car-number-plate"
-                                          th:text="${car.carNumber}">—</span>
-                                </td>
-                                <td th:text="${car.carModel}">—</td>
-                                <td th:text="${car.brand ?: '—'}">—</td>
-                                <td>
-                                    <a th:href="@{/car/search(carNumber=${car.carNumber})}"
-                                       class="btn btn-sm btn-outline-info">
-                                        <i class="bi bi-clock-history"></i>
-                                        History
-                                    </a>
-                                </td>
-                            </tr>
-                            <tr th:if="${#lists.isEmpty(cars)}">
-                                <td colspan="4"
-                                    class="text-center text-muted py-3">
-                                    No cars registered.
-                                    <a th:href="@{/car/new(customerId=${customer.id})}">
-                                        Add a car
-                                    </a>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
+    <!-- No results -->
+    <div th:if="${#lists.isEmpty(searchResults)}"
+         class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        No customers found with name containing
+        "<strong th:text="${searchName}">—</strong>".
     </div>
+
+    <!-- Results table -->
+    <div th:if="${not #lists.isEmpty(searchResults)}"
+         class="card">
+        <div class="card-header bg-dark text-white
+                    d-flex justify-content-between align-items-center">
+            <span>
+                <i class="bi bi-people me-2"></i>
+                Search Results
+            </span>
+            <span class="badge bg-secondary"
+                  th:text="${resultCount} + ' found'">0</span>
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Phone</th>
+                        <th>Email</th>
+                        <th>Member Since</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="cust : ${searchResults}">
+                        <td class="fw-semibold"
+                            th:text="${cust.name}">—</td>
+                        <td>
+                            <a th:href="'tel:' + ${cust.phone}"
+                               th:text="${cust.phone}"
+                               class="text-decoration-none">—</a>
+                        </td>
+                        <td class="text-muted"
+                            th:text="${cust.email ?: '—'}">—</td>
+                        <td class="text-muted small"
+                            th:text="${cust.createdAt != null ?
+                                #temporals.format(cust.createdAt,
+                                'dd MMM yyyy') : '—'}">—</td>
+                        <td>
+                            <a th:href="@{/customer/{id}(id=${cust.id})}"
+                               class="btn btn-sm btn-outline-primary me-1">
+                                <i class="bi bi-eye"></i> View
+                            </a>
+                            <a th:href="@{/bill/new(customerId=${cust.id})}"
+                               class="btn btn-sm btn-outline-success">
+                                <i class="bi bi-file-earmark-plus"></i>
+                                New Bill
+                            </a>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
 </div>
 
 </th:block>

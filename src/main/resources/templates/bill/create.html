@@ -170,15 +170,56 @@
                                    placeholder="e.g. Swift, Innova"/>
                         </div>
 
-                        <div class="col-md-6">
-                            <label class="form-label">Brand</label>
+						<!-- Brand dropdown -->
+						<div class="col-md-6">
+						    <label class="form-label">Brand</label>
 
-                            <input type="text"
-                                   name="carBrand"
-                                   class="form-control form-control-sm"
-                                   placeholder="e.g. Maruti, Toyota"/>
-                        </div>
+						    <select name="carBrand"
+						            class="form-select form-select-sm">
 
+						        <option value="">-- Select Brand --</option>
+						        <option value="Maruti Suzuki">Maruti Suzuki</option>
+						        <option value="Hyundai">Hyundai</option>
+						        <option value="Toyota">Toyota</option>
+						        <option value="Honda">Honda</option>
+						        <option value="Tata">Tata</option>
+						        <option value="Mahindra">Mahindra</option>
+						        <option value="Kia">Kia</option>
+						        <option value="Skoda">Skoda</option>
+						        <option value="Volkswagen">Volkswagen</option>
+						        <option value="Ford">Ford</option>
+						        <option value="Renault">Renault</option>
+						        <option value="Nissan">Nissan</option>
+						        <option value="MG">MG Motor</option>
+						        <option value="Jeep">Jeep</option>
+						        <option value="BMW">BMW</option>
+						        <option value="Mercedes">Mercedes-Benz</option>
+						        <option value="Audi">Audi</option>
+						        <option value="Other">Other</option>
+						    </select>
+						</div>
+
+						<!-- Year of Manufacture -->
+						<div class="col-md-3">
+						    <label class="form-label">Year</label>
+
+						    <input type="number"
+						           name="carManufactureYear"
+						           class="form-control form-control-sm"
+						           placeholder="e.g. 2021"
+						           min="1980"
+						           max="2026"/>
+						</div>
+
+						<!-- Color -->
+						<div class="col-md-3">
+						    <label class="form-label">Color</label>
+
+						    <input type="text"
+						           name="carColor"
+						           class="form-control form-control-sm"
+						           placeholder="e.g. White"/>
+						</div>
                     </div>
                 </div>
 

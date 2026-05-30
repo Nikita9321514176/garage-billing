@@ -182,42 +182,51 @@ public class ReminderRepository {
     // ── STATS FOR DASHBOARD CARDS ──────────────────────────
     // Uses LEFT JOIN so orphan reminders
     // are still counted correctly.
-    public Map<String, Object> getReminderStats() {
+ // ── STATS FOR DASHBOARD CARDS ──────────────────────────
+ // IGNORED reminders should NOT contribute to pending counts.
+ // Bill payment status is the financial truth.
+ public Map<String, Object> getReminderStats() {
 
-        String sql = """
-            SELECT
-                COUNT(
-                    CASE WHEN r.status = 'PENDING'
-                    THEN 1 END
-                ) AS pending_count,
+     String sql = """
+         SELECT
+             COUNT(
+                 CASE WHEN r.status = 'PENDING'
+                 THEN 1 END
+             ) AS pending_count,
 
-                COUNT(
-                    CASE WHEN r.status = 'SENT'
-                    AND r.actioned_at >= DATE_SUB(
-                        NOW(),
-                        INTERVAL 7 DAY
-                    )
-                    THEN 1 END
-                ) AS sent_this_week,
+             COUNT(
+                 CASE WHEN r.status = 'SENT'
+                 AND r.actioned_at >= DATE_SUB(
+                     NOW(),
+                     INTERVAL 7 DAY
+                 )
+                 THEN 1 END
+             ) AS sent_this_week,
 
-                COALESCE(
-                    SUM(
-                        CASE WHEN r.status = 'PENDING'
-                        THEN b.balance_amount END
-                    ),
-                    0
-                ) AS total_pending_balance
+             COALESCE(
+                 SUM(
+                     CASE
+                         WHEN r.status = 'PENDING'
+                         AND b.payment_status != 'PAID'
+                         THEN b.balance_amount
+                     END
+                 ),
+                 0
+             ) AS total_pending_balance
 
-            FROM reminders r
-            LEFT JOIN bills b ON r.bill_id = b.id
-            """;
+         FROM reminders r
+         LEFT JOIN bills b
+                ON r.bill_id = b.id
 
-        try {
-            return jdbcTemplate.queryForMap(sql);
-        } catch (Exception e) {
-            return new java.util.HashMap<>();
-        }
-    }
+         WHERE r.status NOT IN ('IGNORED')
+         """;
+
+     try {
+         return jdbcTemplate.queryForMap(sql);
+     } catch (Exception e) {
+         return new java.util.HashMap<>();
+     }
+ }
 
     // ── DELETE REMINDER ─────────────────────────────────────
     public void deleteById(Long id) {

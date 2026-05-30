@@ -35,6 +35,10 @@ public class BillForm {
     private String carModel;              // set if new car
     private String carBrand;              // optional
 
+    // NEW CAR DETAILS
+    private Integer carManufactureYear;
+    private String carColor;
+
     // ── PAYMENT FIELDS ────────────────────────────────────────
     // How much the customer is paying RIGHT NOW (at time of bill creation).
     // Can be 0 (full credit), partial, or full amount.

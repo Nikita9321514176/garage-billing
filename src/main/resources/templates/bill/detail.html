@@ -11,34 +11,20 @@
 
     <div class="d-flex gap-2">
 
-        <!-- PRINT BUTTON -->
-        <button type="button"
-                class="btn btn-outline-secondary btn-sm"
-                onclick="window.print()"
-                title="Print this bill">
-            <i class="bi bi-printer me-1"></i>Print
-        </button>
-
-        <!-- DOWNLOAD PDF BUTTON -->
-        <a th:href="@{/bill/{id}/pdf(id=${bill.id})}"
-           class="btn btn-outline-danger btn-sm">
-            <i class="bi bi-file-pdf me-1"></i>Download PDF
-        </a>
-
-        <!-- EDIT BILL BUTTON -->
+        <!-- EDIT BILL -->
         <a th:href="@{/bill/{id}/edit(id=${bill.id})}"
            class="btn btn-outline-warning btn-sm">
             <i class="bi bi-pencil-square me-1"></i>Edit Bill
         </a>
 
-        <a th:href="@{/dashboard}" class="btn btn-outline-secondary btn-sm">
+        <!-- DASHBOARD -->
+        <a th:href="@{/dashboard}"
+           class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-arrow-left me-1"></i>Dashboard
         </a>
 
     </div>
 </div>
-
-<div class="row g-4">
 
     <!-- ════════════ LEFT — Bill Details ════════════ -->
     <div class="col-lg-8">
@@ -588,47 +574,42 @@
 
             <div class="card-body">
 
-                <div class="d-grid mb-2">
+				<!-- SHARE BILL -->
+				<div class="card mt-3">
 
-                    <a th:href="@{/whatsapp/send(billId=${bill.id})}"
-                       class="btn btn-success">
+				    <div class="card-header"
+				         style="background:#25D366;color:#fff">
 
-                        <i class="bi bi-whatsapp me-2"></i>
-                        Send Bill on WhatsApp
+				        <i class="bi bi-whatsapp me-2"></i>
+				        Share Bill
 
-                    </a>
+				    </div>
 
-                </div>
+				    <div class="card-body">
 
-                <div class="d-grid">
+				        <div class="d-grid mb-2">
 
-                    <a th:href="${'https://wa.me/91'
-                                 + (bill.customerPhone != null
-                                     ? bill.customerPhone
-                                         .replaceAll('[^0-9]','')
-                                     : '')
-                                 + '?text=Dear+'
-                                 + (bill.customerName != null
-                                     ? bill.customerName
-                                         .replace(' ','+')
-                                     : 'Customer')
-                                 + ',+your+bill+'
-                                 + bill.billNumber
-                                 + '+of+Rs.'
-                                 + bill.totalAmount
-                                 + '+is+ready.+Balance+Rs.'
-                                 + bill.balanceAmount
-                                 + '.+Thank+you!+-+GarageBilling'}"
+				            <a th:href="@{/whatsapp/send(billId=${bill.id})}"
+				               class="btn btn-success btn-lg">
 
-                       target="_blank"
-                       class="btn btn-outline-success btn-sm">
+				                <i class="bi bi-whatsapp me-2"></i>
+				                Send Bill on WhatsApp
 
-                        <i class="bi bi-lightning me-1"></i>
-                        Quick Send (no preview)
+				            </a>
 
-                    </a>
+				        </div>
 
-                </div>
+				        <div class="text-center">
+
+				            <small class="text-muted">
+				                Opens WhatsApp with bill details and PDF link
+				            </small>
+
+				        </div>
+
+				    </div>
+
+				</div>
 
             </div>
 

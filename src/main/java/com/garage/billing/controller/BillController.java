@@ -408,16 +408,18 @@ public class BillController {
 
                 } else {
 
-                    Car newCar = Car.builder()
-                            .customerId(customer.getId())
-                            .carNumber(carNum)
-                            .carModel(
-                                    billForm.getCarModel() != null
-                                            ? billForm.getCarModel().trim()
-                                            : "Unknown"
-                            )
-                            .brand(billForm.getCarBrand())
-                            .build();
+                	// FIND this section in saveBill() where new car is created
+                	// and update the Car.builder() call:
+                	Car newCar = Car.builder()
+                	    .customerId(customer.getId())
+                	    .carNumber(carNum)
+                	    .carModel(billForm.getCarModel() != null
+                	        ? billForm.getCarModel().trim() : "Unknown")
+                	    .brand(billForm.getCarBrand())
+                	    // ADD these two:
+                	    .manufactureYear(billForm.getCarManufactureYear())
+                	    .color(billForm.getCarColor())
+                	    .build();
 
                     Long carId = carRepository.save(newCar);
 

@@ -21,6 +21,7 @@ public class CustomerRepository {
     private JdbcTemplate jdbcTemplate;
 
     private static final RowMapper<Customer> CUSTOMER_MAPPER = (rs, rowNum) -> {
+
         Customer c = new Customer();
 
         c.setId(rs.getLong("id"));
@@ -37,6 +38,7 @@ public class CustomerRepository {
         return c;
     };
 
+    // SAVE CUSTOMER
     public Long save(Customer customer) {
 
         String sql =
@@ -60,6 +62,7 @@ public class CustomerRepository {
         return keyHolder.getKey().longValue();
     }
 
+    // FIND BY ID
     public Optional<Customer> findById(Long id) {
 
         String sql = "SELECT * FROM customers WHERE id = ?";
@@ -70,6 +73,7 @@ public class CustomerRepository {
         return results.stream().findFirst();
     }
 
+    // FIND BY PHONE
     public Optional<Customer> findByPhone(String phone) {
 
         String sql = "SELECT * FROM customers WHERE phone = ?";
@@ -80,6 +84,7 @@ public class CustomerRepository {
         return results.stream().findFirst();
     }
 
+    // FIND ALL
     public List<Customer> findAll() {
 
         String sql =
@@ -88,6 +93,25 @@ public class CustomerRepository {
         return jdbcTemplate.query(sql, CUSTOMER_MAPPER);
     }
 
+    // SEARCH BY NAME
+    public List<Customer> searchByName(String name) {
+
+        String sql = """
+            SELECT * FROM customers
+            WHERE name LIKE ?
+            ORDER BY name ASC
+            """;
+
+        String searchPattern = "%" + name.trim() + "%";
+
+        return jdbcTemplate.query(
+                sql,
+                CUSTOMER_MAPPER,
+                searchPattern
+        );
+    }
+
+    // UPDATE CUSTOMER
     public int update(Customer customer) {
 
         String sql =
@@ -102,13 +126,18 @@ public class CustomerRepository {
         );
     }
 
+    // CHECK PHONE EXISTS
     public boolean existsByPhone(String phone) {
 
         String sql =
                 "SELECT COUNT(*) FROM customers WHERE phone = ?";
 
         Integer count =
-                jdbcTemplate.queryForObject(sql, Integer.class, phone);
+                jdbcTemplate.queryForObject(
+                        sql,
+                        Integer.class,
+                        phone
+                );
 
         return count != null && count > 0;
     }

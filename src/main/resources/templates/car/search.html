@@ -431,28 +431,19 @@
                                 </div>
                             </div>
 
-                            <!-- ACTION BUTTONS -->
-                            <div class="ms-auto">
+							<!-- ACTION BUTTONS -->
+							<div class="ms-auto">
 
-                                <!-- VIEW BILL -->
-                                <a th:href="@{/bill/{id}(id=${bill.id})}"
-                                   class="btn btn-sm btn-outline-primary">
+							    <!-- VIEW BILL -->
+							    <a th:href="@{/bill/{id}(id=${bill.id})}"
+							       class="btn btn-sm btn-outline-primary">
 
-                                    <i class="bi bi-eye me-1"></i>
-                                    View Bill
+							        <i class="bi bi-eye me-1"></i>
+							        View Bill
 
-                                </a>
+							    </a>
 
-                                <!-- PDF DOWNLOAD -->
-                                <a th:href="@{/bill/{id}/pdf(id=${bill.id})}"
-                                   class="btn btn-sm btn-outline-danger ms-1">
-
-                                    <i class="bi bi-file-pdf me-1"></i>
-                                    PDF
-
-                                </a>
-
-                            </div>
+							</div>
 
                         </div>
 
