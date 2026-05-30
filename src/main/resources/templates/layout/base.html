@@ -5,7 +5,7 @@
 <head>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>GarageBilling</title>
+    <title>The J Motors</title>
 
     <link rel="stylesheet"
           href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"/>
@@ -19,7 +19,7 @@
 <!-- NAVBAR -->
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark px-3">
     <a class="navbar-brand fw-bold" th:href="@{/dashboard}">
-        <i class="bi bi-tools me-2"></i>GarageBilling
+        <i class="bi bi-tools me-2"></i>The J Motors
     </a>
 
     <button class="navbar-toggler" type="button"
@@ -64,11 +64,6 @@
 
             <!-- REMINDERS NAV LINK WITH LIVE BADGE -->
             <li class="nav-item">
-                <!--
-                    The bell icon gets a red badge showing
-                    pending reminder count.
-                    pendingReminders is expected in the model.
-                -->
                 <a class="nav-link position-relative"
                    th:href="@{/reminder/list}">
                     <i class="bi bi-bell me-1"></i>Reminders
@@ -86,12 +81,7 @@
                 </a>
             </li>
 
-            <!--
-                LOGOUT BUTTON
-                Logout MUST be POST request for security.
-                Spring Security automatically injects CSRF token
-                because we are using th:action.
-            -->
+            <!-- LOGOUT BUTTON -->
             <li class="nav-item d-flex align-items-center ms-lg-2">
                 <form th:action="@{/logout}" method="post"
                       class="d-inline m-0">
@@ -152,7 +142,7 @@
 </main>
 
 <footer class="bg-dark text-white text-center py-3 mt-5">
-    <small>GarageBilling System &copy; 2024</small>
+    <small>The J Motors &copy; 2026</small>
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
