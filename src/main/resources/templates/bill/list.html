@@ -243,39 +243,40 @@
 </div>
 
 <script>
-// Helper: format a date as YYYY-MM-DD for the input field
 function fmt(d) {
-    return d.toISOString().slice(0,10);
+    // Format date as YYYY-MM-DD for the URL query param
+    var y = d.getFullYear();
+    var m = String(d.getMonth() + 1).padStart(2, '0');
+    var day = String(d.getDate()).padStart(2, '0');
+    return y + '-' + m + '-' + day;
 }
 
-// Sets the date inputs and submits the filter form
+// KEY FIX: use window.location.href (GET) instead of form.submit() (POST)
+// GET requests are never blocked by CSRF — only POST/PUT/DELETE are.
+// This keeps the user logged in and correctly filters the bill list.
 function applyFilter(from, to) {
-    document.querySelector('input[name="from"]').value = fmt(from);
-    document.querySelector('input[name="to"]').value   = fmt(to);
-    // Submit the form programmatically
-    document.querySelector('form').submit();
+    window.location.href =
+        '/bill/list?from=' + fmt(from) + '&to=' + fmt(to);
 }
 
 function setThisMonth() {
     var now   = new Date();
-    // First day of current month: day = 1
     var start = new Date(now.getFullYear(), now.getMonth(), 1);
-    // Last day: month+1, day 0 = last day of current month
-    var end   = new Date(now.getFullYear(), now.getMonth()+1, 0);
+    var end   = new Date(now.getFullYear(), now.getMonth() + 1, 0);
     applyFilter(start, end);
 }
 
 function setLastMonth() {
     var now   = new Date();
-    var start = new Date(now.getFullYear(), now.getMonth()-1, 1);
+    var start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     var end   = new Date(now.getFullYear(), now.getMonth(), 0);
     applyFilter(start, end);
 }
 
 function setThisYear() {
     var y     = new Date().getFullYear();
-    var start = new Date(y, 0, 1);   // Jan 1
-    var end   = new Date(y, 11, 31); // Dec 31
+    var start = new Date(y, 0, 1);
+    var end   = new Date(y, 11, 31);
     applyFilter(start, end);
 }
 
