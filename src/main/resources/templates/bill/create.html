@@ -306,53 +306,138 @@
 
             <div class="card-body">
 
-                <!-- Total -->
-                <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+				<!-- Total -->
+				<div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
 
-                    <span class="text-muted">Total Amount</span>
+				    <span class="text-muted">Total Amount</span>
 
-                    <span id="totalAmountDisplay"
-                          class="fw-bold fs-4 text-primary">
+				    <span id="totalAmountDisplay"
+				          class="fw-bold fs-4 text-primary">
 
-                        &#8377;0.00
+				        &#8377;0.00
 
-                    </span>
+				    </span>
 
-                </div>
+				</div>
 
-                <input type="hidden"
-                       id="totalAmountHidden"
-                       name="totalAmount"
-                       value="0"/>
+				<input type="hidden"
+				       id="totalAmountHidden"
+				       name="totalAmount"
+				       value="0"/>
 
-                <!-- Payment -->
-                <div class="mb-3">
+				<!-- Discount input -->
+				<div class="mb-3">
+				    <label class="form-label">
+				        Discount
+				        <span class="text-muted small">(in ₹, optional)</span>
+				    </label>
 
-                    <label class="form-label">
-                        Payment Received Now
-                    </label>
+				    <div class="input-group">
+				        <span class="input-group-text">&#8377;</span>
 
-                    <div class="input-group">
+				        <input type="number"
+				               id="discountAmount"
+				               name="discountAmount"
+				               class="form-control"
+				               placeholder="0.00"
+				               min="0"
+				               step="0.01"
+				               value="0"
+				               oninput="calculateTotal()"/>
+				    </div>
+				</div>
 
-                        <span class="input-group-text">&#8377;</span>
+				<!-- Subtotal display -->
+				<div class="d-flex justify-content-between align-items-center mb-1">
+				    <span class="text-muted small">Subtotal</span>
 
-                        <input type="number"
-                               id="initialPayment"
-                               name="initialPayment"
-                               class="form-control"
-                               placeholder="0.00"
-                               min="0"
-                               step="0.01"
-                               value="0"
-                               oninput="calculateTotal()"/>
+				    <span id="subtotalDisplay"
+				          class="small">
 
-                    </div>
+				        &#8377;0.00
 
-                    <div class="form-text">
-                        Enter 0 if no payment today
-                    </div>
+				    </span>
+				</div>
 
-                </div>
+				<!-- Discount display -->
+				<div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom"
+				     id="discountRow"
+				     style="display:none !important">
+
+				    <span class="text-muted small">Discount</span>
+
+				    <span id="discountDisplay"
+				          class="small text-success">
+
+				        - &#8377;0.00
+
+				    </span>
+				</div>
+
+					   <!-- Payment Amount -->
+					   <div class="mb-3">
+					       <label class="form-label">Payment Received Now</label>
+
+					       <div class="input-group">
+					           <span class="input-group-text">&#8377;</span>
+
+					           <input type="number"
+					                  id="initialPayment"
+					                  name="initialPayment"
+					                  class="form-control"
+					                  placeholder="0.00"
+					                  min="0"
+					                  step="0.01"
+					                  value="0"
+					                  oninput="calculateTotal()"/>
+					       </div>
+
+					       <div class="form-text">
+					           Enter 0 if no payment today
+					       </div>
+					   </div>
+
+					   <!-- Payment Mode -->
+					   <div class="mb-3"
+					        id="paymentModeSection"
+					        style="display:none">
+
+					       <label class="form-label">
+					           Payment Mode
+					           <span class="text-danger">*</span>
+					       </label>
+
+					       <select name="initialPaymentMode"
+					               id="initialPaymentMode"
+					               class="form-select">
+
+					           <option value="">-- Select mode --</option>
+					           <option value="CASH">Cash</option>
+					           <option value="UPI">UPI</option>
+					           <option value="CARD">Card / Debit / Credit</option>
+					           <option value="CHEQUE">Cheque</option>
+					           <option value="BANK_TRANSFER">
+					               Bank Transfer / NEFT
+					           </option>
+
+					       </select>
+					   </div>
+
+					   <!-- Transaction Reference -->
+					   <div class="mb-3"
+					        id="paymentRefSection"
+					        style="display:none">
+
+					       <label class="form-label">
+					           Transaction Reference
+					           <span class="text-muted small">(optional)</span>
+					       </label>
+
+					       <input type="text"
+					              name="initialPaymentReference"
+					              class="form-control form-control-sm"
+					              placeholder="UPI ref / Cheque no. / Transaction ID"/>
+					   </div>
 
                 <!-- Balance -->
                 <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
@@ -464,12 +549,37 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('newCustomerFields').style.display = 'block';
     }
 
-    var paidInput = document.getElementById('initialPayment');
+	var payInput = document.getElementById('initialPayment');
 
-    if (paidInput) {
-        paidInput.addEventListener('input', calculateTotal);
-    }
+	if (payInput) {
 
+	    payInput.addEventListener('input', function() {
+
+	        var amount = parseFloat(this.value) || 0;
+
+	        var modeSection =
+	            document.getElementById('paymentModeSection');
+
+	        var refSection =
+	            document.getElementById('paymentRefSection');
+
+	        if (amount > 0) {
+
+	            modeSection.style.display = 'block';
+	            refSection.style.display = 'block';
+
+	        } else {
+
+	            modeSection.style.display = 'none';
+	            refSection.style.display = 'none';
+	        }
+
+	        calculateTotal();
+	    });
+
+	    // Run once on page load
+	    payInput.dispatchEvent(new Event('input'));
+	}
     calculateTotal();
 });
 

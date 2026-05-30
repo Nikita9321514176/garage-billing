@@ -219,25 +219,93 @@
 
                     </tbody>
 
-                    <tfoot class="table-light">
+					<tfoot class="table-light">
 
-                        <tr>
+					    <!-- Subtotal row -->
+					    <tr>
 
-                            <td colspan="3"
-                                class="text-end fw-bold">
-                                Total
-                            </td>
+					        <td colspan="3"
+					            class="text-end text-muted">
 
-                            <td class="text-end fw-bold text-primary">
+					            Subtotal
 
-                                &#8377;<span th:text="${#numbers.formatDecimal(
-                                    bill.totalAmount, 1, 'COMMA', 2, 'POINT')}">0.00</span>
+					        </td>
 
-                            </td>
+					        <td class="text-end">
 
-                        </tr>
+					            &#8377;<span th:text="${#numbers.formatDecimal(
+					                bill.totalAmount.add(
+					                    bill.discountAmount != null
+					                        ? bill.discountAmount
+					                        : T(java.math.BigDecimal).ZERO
+					                ),
+					                1,'COMMA',2,'POINT')}">
 
-                    </tfoot>
+					                0.00
+
+					            </span>
+
+					        </td>
+
+					    </tr>
+
+					    <!-- Discount row -->
+					    <tr th:if="${bill.discountAmount != null
+					                and bill.discountAmount.compareTo(
+					                    T(java.math.BigDecimal).ZERO) > 0}">
+
+					        <td colspan="3"
+					            class="text-end text-success">
+
+					            Discount
+
+					        </td>
+
+					        <td class="text-end text-success fw-semibold">
+
+					            - &#8377;<span th:text="${#numbers.formatDecimal(
+					                bill.discountAmount,
+					                1,
+					                'COMMA',
+					                2,
+					                'POINT')}">
+
+					                0.00
+
+					            </span>
+
+					        </td>
+
+					    </tr>
+
+					    <!-- Final Total -->
+					    <tr>
+
+					        <td colspan="3"
+					            class="text-end fw-bold">
+
+					            Total (after discount)
+
+					        </td>
+
+					        <td class="text-end fw-bold text-primary">
+
+					            &#8377;<span th:text="${#numbers.formatDecimal(
+					                bill.totalAmount,
+					                1,
+					                'COMMA',
+					                2,
+					                'POINT')}">
+
+					                0.00
+
+					            </span>
+
+					        </td>
+
+					    </tr>
+
+					</tfoot>
 
                 </table>
 

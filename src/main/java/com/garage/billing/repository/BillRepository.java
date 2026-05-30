@@ -39,8 +39,17 @@ public class BillRepository {
         bill.setBillNumber(rs.getString("bill_number"));
 
         bill.setTotalAmount(rs.getBigDecimal("total_amount"));
-        bill.setPaidAmount(rs.getBigDecimal("paid_amount"));
-        bill.setBalanceAmount(rs.getBigDecimal("balance_amount"));
+
+     // NEW: Discount Amount
+     BigDecimal discount = rs.getBigDecimal("discount_amount");
+     bill.setDiscountAmount(
+             discount != null
+                     ? discount
+                     : BigDecimal.ZERO
+     );
+
+     bill.setPaidAmount(rs.getBigDecimal("paid_amount"));
+     bill.setBalanceAmount(rs.getBigDecimal("balance_amount"));
 
         bill.setPaymentStatus(rs.getString("payment_status"));
         bill.setNotes(rs.getString("notes"));
@@ -100,61 +109,73 @@ public class BillRepository {
 
         return item;
     };
+ // ─────────────────────────────────────────────────────────
+ // SAVE BILL
+ // ─────────────────────────────────────────────────────────
+ public Long saveBill(Bill bill) {
 
-    // ─────────────────────────────────────────────────────────
-    // SAVE BILL
-    // ─────────────────────────────────────────────────────────
-    public Long saveBill(Bill bill) {
+     String sql = """
+         INSERT INTO bills
+         (
+             car_id,
+             customer_id,
+             bill_number,
+             total_amount,
+             discount_amount,
+             paid_amount,
+             balance_amount,
+             payment_status,
+             due_date,
+             notes
+         )
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         """;
 
-        String sql = """
-            INSERT INTO bills
-            (
-                car_id,
-                customer_id,
-                bill_number,
-                total_amount,
-                paid_amount,
-                balance_amount,
-                payment_status,
-                due_date,
-                notes
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """;
+     KeyHolder keyHolder = new GeneratedKeyHolder();
 
-        KeyHolder keyHolder = new GeneratedKeyHolder();
+     jdbcTemplate.update(conn -> {
 
-        jdbcTemplate.update(conn -> {
+         PreparedStatement ps =
+                 conn.prepareStatement(
+                         sql,
+                         Statement.RETURN_GENERATED_KEYS
+                 );
 
-            PreparedStatement ps =
-                    conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+         ps.setLong(1, bill.getCarId());
+         ps.setLong(2, bill.getCustomerId());
 
-            ps.setLong(1, bill.getCarId());
-            ps.setLong(2, bill.getCustomerId());
+         ps.setString(3, bill.getBillNumber());
 
-            ps.setString(3, bill.getBillNumber());
+         ps.setBigDecimal(4, bill.getTotalAmount());
 
-            ps.setBigDecimal(4, bill.getTotalAmount());
-            ps.setBigDecimal(5, bill.getPaidAmount());
-            ps.setBigDecimal(6, bill.getBalanceAmount());
+         // NEW: Discount Amount
+         ps.setBigDecimal(
+                 5,
+                 bill.getDiscountAmount() != null
+                         ? bill.getDiscountAmount()
+                         : BigDecimal.ZERO
+         );
 
-            ps.setString(7, bill.getPaymentStatus());
+         ps.setBigDecimal(6, bill.getPaidAmount());
+         ps.setBigDecimal(7, bill.getBalanceAmount());
 
-            ps.setObject(
-                    8,
-                    bill.getDueDate() != null
-                            ? Date.valueOf(bill.getDueDate())
-                            : null
-            );
+         ps.setString(8, bill.getPaymentStatus());
 
-            ps.setString(9, bill.getNotes());
+         ps.setObject(
+                 9,
+                 bill.getDueDate() != null
+                         ? Date.valueOf(bill.getDueDate())
+                         : null
+         );
 
-            return ps;
+         ps.setString(10, bill.getNotes());
 
-        }, keyHolder);
+         return ps;
 
-        return keyHolder.getKey().longValue();
-    }
+     }, keyHolder);
+
+     return keyHolder.getKey().longValue();
+ }
 
     // ─────────────────────────────────────────────────────────
     // SAVE SERVICE
@@ -196,37 +217,47 @@ public class BillRepository {
         jdbcTemplate.update(sql, billId);
     }
 
-    // ─────────────────────────────────────────────────────────
-    // UPDATE BILL
-    // ─────────────────────────────────────────────────────────
-    public void updateBill(Bill bill) {
+ // ─────────────────────────────────────────────────────────
+ // UPDATE BILL
+ // ─────────────────────────────────────────────────────────
+ public void updateBill(Bill bill) {
 
-        String sql = """
-            UPDATE bills
-            SET total_amount    = ?,
-                paid_amount     = ?,
-                balance_amount  = ?,
-                payment_status  = ?,
-                due_date        = ?,
-                notes           = ?
-            WHERE id = ?
-            """;
+     String sql = """
+         UPDATE bills
+         SET total_amount    = ?,
+             discount_amount = ?,
+             paid_amount     = ?,
+             balance_amount  = ?,
+             payment_status  = ?,
+             due_date        = ?,
+             notes           = ?
+         WHERE id = ?
+         """;
 
-        jdbcTemplate.update(
-                sql,
-                bill.getTotalAmount(),
-                bill.getPaidAmount(),
-                bill.getBalanceAmount(),
-                bill.getPaymentStatus(),
+     jdbcTemplate.update(
+             sql,
 
-                bill.getDueDate() != null
-                        ? java.sql.Date.valueOf(bill.getDueDate())
-                        : null,
+             bill.getTotalAmount(),
 
-                bill.getNotes(),
-                bill.getId()
-        );
-    }
+             bill.getDiscountAmount() != null
+                     ? bill.getDiscountAmount()
+                     : BigDecimal.ZERO,
+
+             bill.getPaidAmount(),
+
+             bill.getBalanceAmount(),
+
+             bill.getPaymentStatus(),
+
+             bill.getDueDate() != null
+                     ? java.sql.Date.valueOf(bill.getDueDate())
+                     : null,
+
+             bill.getNotes(),
+
+             bill.getId()
+     );
+ }
 
     // ─────────────────────────────────────────────────────────
     // FIND BILL BY ID

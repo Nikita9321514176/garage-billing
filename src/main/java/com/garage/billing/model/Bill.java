@@ -25,7 +25,13 @@ public class Bill {
     private String billNumber;
 
     private BigDecimal totalAmount;
+
+    // Maps to bills.discount_amount
+    // Discount given to customer in rupees
+    private BigDecimal discountAmount;
+
     private BigDecimal paidAmount;
+
     private BigDecimal balanceAmount;
 
     private String paymentStatus;
@@ -37,8 +43,11 @@ public class Bill {
     private String notes;
 
     private String customerName;
+
     private String customerPhone;
+
     private String carNumber;
+
     private String carModel;
 
     private List<BillServiceItem> services;

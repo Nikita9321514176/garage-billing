@@ -24,13 +24,13 @@ public class BillForm {
     // Either the owner selects an existing customer (existingCustomerId)
     // OR they type in details for a new one.
     // The controller handles both cases.
-    private Long   existingCustomerId;    // set if existing customer selected
+    private Long existingCustomerId;      // set if existing customer selected
     private String customerName;          // set if new customer
     private String customerPhone;         // set if new customer
     private String customerEmail;         // optional for new customer
 
     // ── CAR FIELDS ────────────────────────────────────────────
-    private Long   existingCarId;         // set if car already registered
+    private Long existingCarId;           // set if car already registered
     private String carNumber;             // set if new car
     private String carModel;              // set if new car
     private String carBrand;              // optional
@@ -40,9 +40,21 @@ public class BillForm {
     // Can be 0 (full credit), partial, or full amount.
     private BigDecimal initialPayment;
 
+    // Discount amount in rupees entered during bill creation
+    // Example: Total = 1000, Discount = 100, Final = 900
+    private BigDecimal discountAmount;
+
+    // Payment mode chosen at bill creation time
+    // Options: CASH, UPI, CARD, CHEQUE, BANK_TRANSFER
+    // null = no payment made (no payment record created)
+    private String initialPaymentMode;
+
+    // UPI ref, cheque number, card last 4 digits etc.
+    private String initialPaymentReference;
+
     // ── DUE DATE ──────────────────────────────────────────────
-    // When remaining balance should be paid by.
-    private String dueDate;               // received as "2024-05-25" string from date input
+    // Received as YYYY-MM-DD string from HTML date input
+    private String dueDate;
 
     // ── NOTES ─────────────────────────────────────────────────
     private String notes;
@@ -53,22 +65,24 @@ public class BillForm {
     //   services[0].amount=800
     //   services[1].serviceName=Tyre Rotation
     //   services[1].amount=300
-    // Spring automatically populates this list with 2 ServiceLine objects.
+    // Spring automatically populates this list with ServiceLine objects.
     //
     // We initialize with an empty ArrayList to prevent NullPointerException
     // if the form somehow sends zero services.
     private List<ServiceLine> services = new ArrayList<>();
 
-    // ── INNER CLASS: ServiceLine ───────────────────────────────
+    // ── INNER CLASS: ServiceLine ──────────────────────────────
     // Represents ONE row in the services table on the bill form.
-    // Inner class because it's only used inside BillForm.
     @Data
     @NoArgsConstructor
     public static class ServiceLine {
-        // maps to: services[i].serviceName in the form
-        private String     serviceName;
+
+        // maps to: services[i].serviceName
+        private String serviceName;
+
         // maps to: services[i].description
-        private String     description;
+        private String description;
+
         // maps to: services[i].amount
         private BigDecimal amount;
     }

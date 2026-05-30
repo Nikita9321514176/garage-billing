@@ -26,63 +26,80 @@ public class BillService {
     @Autowired
     private BillNumberGenerator billNumberGenerator;
 
-    // ─────────────────────────────────────────────────────────
-    // SAVE BILL WITH SERVICES
-    // ─────────────────────────────────────────────────────────
-    @Transactional
-    public Bill saveBillWithServices(
-            Bill bill,
-            List<BillServiceItem> services
-    ) {
+ // ─────────────────────────────────────────────────────────
+ // SAVE BILL WITH SERVICES
+ // ─────────────────────────────────────────────────────────
+ @Transactional
+ public Bill saveBillWithServices(
+         Bill bill,
+         List<BillServiceItem> services
+ ) {
 
-        // Calculate total
-        BigDecimal total = services.stream()
-                .map(BillServiceItem::getAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+     // Step 1: Calculate subtotal from all services
+     BigDecimal subtotal = services.stream()
+             .map(BillServiceItem::getAmount)
+             .filter(amount -> amount != null)
+             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // Set totals
-        bill.setTotalAmount(total);
+     // Step 2: Get discount amount
+     BigDecimal discount = bill.getDiscountAmount() != null
+             ? bill.getDiscountAmount()
+             : BigDecimal.ZERO;
 
-        bill.setBalanceAmount(
-                total.subtract(
-                        bill.getPaidAmount() != null
-                                ? bill.getPaidAmount()
-                                : BigDecimal.ZERO
-                )
-        );
+     // Safety check:
+     // Discount cannot be greater than subtotal
+     if (discount.compareTo(subtotal) > 0) {
+         discount = subtotal;
+         bill.setDiscountAmount(discount);
+     }
 
-        // Set payment status
-        bill.setPaymentStatus(
-                determineStatus(
-                        bill.getTotalAmount(),
-                        bill.getPaidAmount()
-                )
-        );
+     // Step 3: Final total after discount
+     BigDecimal finalTotal = subtotal.subtract(discount);
 
-        // Generate bill number
-        bill.setBillNumber(
-                billNumberGenerator.generate()
-        );
+     bill.setTotalAmount(finalTotal);
 
-        // Save bill
-        Long billId = billRepository.saveBill(bill);
+     // Step 4: Calculate balance
+     BigDecimal paid = bill.getPaidAmount() != null
+             ? bill.getPaidAmount()
+             : BigDecimal.ZERO;
 
-        bill.setId(billId);
+     BigDecimal balance = finalTotal.subtract(paid);
 
-        // Save services
-        for (int i = 0; i < services.size(); i++) {
+     if (balance.compareTo(BigDecimal.ZERO) < 0) {
+         balance = BigDecimal.ZERO;
+     }
 
-            BillServiceItem item = services.get(i);
+     bill.setBalanceAmount(balance);
 
-            item.setBillId(billId);
+     // Step 5: Payment status
+     bill.setPaymentStatus(
+             determineStatus(finalTotal, paid)
+     );
 
-            item.setSortOrder(i + 1);
+     // Step 6: Generate bill number
+     bill.setBillNumber(
+             billNumberGenerator.generate()
+     );
 
-            billRepository.saveService(item);
-        }
+     // Step 7: Save bill
+     Long billId = billRepository.saveBill(bill);
 
-        return bill;
-    }
+     bill.setId(billId);
+
+     // Step 8: Save service lines
+     for (int i = 0; i < services.size(); i++) {
+
+         BillServiceItem item = services.get(i);
+
+         item.setBillId(billId);
+
+         item.setSortOrder(i + 1);
+
+         billRepository.saveService(item);
+     }
+
+     return bill;
+ }
 
     // ─────────────────────────────────────────────────────────
     // UPDATE BILL WITH SERVICES

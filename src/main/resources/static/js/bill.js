@@ -96,15 +96,56 @@ function removeRow(rowId) {
 // ── calculateTotal ───────────────────────────────────────────
 // Reads every .amount-input field, sums them, updates display
 function calculateTotal() {
+    // Sum all service amounts — this is the subtotal
     var inputs = document.querySelectorAll('.amount-input');
-    var total = 0;
-
+    var subtotal = 0;
     for (var i = 0; i < inputs.length; i++) {
         var val = parseFloat(inputs[i].value);
-        if (!isNaN(val) && val > 0) {
-            total += val;
-        }
+        if (!isNaN(val) && val > 0) subtotal += val;
     }
+    subtotal = Math.round(subtotal * 100) / 100;
+
+    // Read discount
+    var discountInput = document.getElementById('discountAmount');
+    var discount = discountInput
+        ? (parseFloat(discountInput.value) || 0) : 0;
+    discount = Math.round(discount * 100) / 100;
+
+    // Safety: discount cannot exceed subtotal
+    if (discount > subtotal) {
+        discount = subtotal;
+        if (discountInput) discountInput.value = discount.toFixed(2);
+    }
+
+    // Final total = subtotal - discount
+    var finalTotal = Math.round((subtotal - discount) * 100) / 100;
+
+    // Update subtotal display
+    var subtotalDisplay = document.getElementById('subtotalDisplay');
+    if (subtotalDisplay) {
+        subtotalDisplay.textContent = '\u20B9' + formatNum(subtotal.toFixed(2));
+    }
+
+    // Show/hide discount row
+    var discountRow = document.getElementById('discountRow');
+    if (discountRow) {
+        discountRow.style.display = discount > 0 ? 'flex' : 'none';
+    }
+    var discountDisplay = document.getElementById('discountDisplay');
+    if (discountDisplay) {
+        discountDisplay.textContent = '- \u20B9' + formatNum(discount.toFixed(2));
+    }
+
+    // Update total display
+    var display = document.getElementById('totalAmountDisplay');
+    if (display) {
+        display.textContent = '\u20B9' + formatNum(finalTotal.toFixed(2));
+    }
+    var hidden = document.getElementById('totalAmountHidden');
+    if (hidden) hidden.value = finalTotal.toFixed(2);
+
+    updateBalance(finalTotal);
+}
 
     // Round to 2 decimal places to avoid float artifacts
     total = Math.round(total * 100) / 100;

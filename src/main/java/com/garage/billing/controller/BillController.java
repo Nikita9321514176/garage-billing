@@ -500,16 +500,26 @@ public class BillController {
                 }
             }
 
-            // ─────────────────────────────────────────
-            // STEP 5: BUILD BILL
-            // ─────────────────────────────────────────
-            Bill bill = Bill.builder()
-                    .customerId(customer.getId())
-                    .carId(car.getId())
-                    .paidAmount(initialPayment)
-                    .dueDate(dueDate)
-                    .notes(billForm.getNotes())
-                    .build();
+         // ─────────────────────────────────────────
+         // STEP 5: BUILD BILL
+         // ─────────────────────────────────────────
+         Bill bill = Bill.builder()
+                 .customerId(customer.getId())
+                 .carId(car.getId())
+                 .paidAmount(initialPayment)
+                 .dueDate(dueDate)
+                 .notes(billForm.getNotes())
+                 .build();
+
+         // ─────────────────────────────────────────
+         // SET DISCOUNT FROM FORM
+         // ─────────────────────────────────────────
+         BigDecimal discount =
+                 billForm.getDiscountAmount() != null
+                         ? billForm.getDiscountAmount()
+                         : BigDecimal.ZERO;
+
+         bill.setDiscountAmount(discount);
 
             // ─────────────────────────────────────────
             // STEP 6: SAVE BILL
@@ -519,22 +529,39 @@ public class BillController {
                             bill,
                             serviceItems
                     );
+         // ─────────────────────────────────────────
+         // STEP 7: RECORD INITIAL PAYMENT
+         // ONLY if amount > 0
+         // ─────────────────────────────────────────
+         if (initialPayment.compareTo(BigDecimal.ZERO) > 0) {
 
-            // ─────────────────────────────────────────
-            // STEP 7: SAVE PAYMENT
-            // ─────────────────────────────────────────
-            if (initialPayment.compareTo(BigDecimal.ZERO) > 0) {
+             String payMode = billForm.getInitialPaymentMode();
 
-                Payment payment = Payment.builder()
-                        .billId(savedBill.getId())
-                        .amountPaid(initialPayment)
-                        .paymentMode("CASH")
-                        .notes("Initial payment")
-                        .build();
+             // If amount entered but mode not selected
+             if (payMode == null || payMode.trim().isEmpty()) {
+                 payMode = "CASH";
+             }
 
-                paymentService.recordPayment(payment);
-            }
+             Payment payment = Payment.builder()
+                     .billId(savedBill.getId())
+                     .amountPaid(initialPayment)
+                     .paymentMode(payMode)
 
+                     .transactionReference(
+                             billForm.getInitialPaymentReference() != null
+                             && !billForm.getInitialPaymentReference()
+                                     .trim()
+                                     .isEmpty()
+                             ? billForm.getInitialPaymentReference()
+                                     .trim()
+                             : null
+                     )
+
+                     .notes("Initial payment at bill creation")
+                     .build();
+
+             paymentService.recordPayment(payment);
+         }
             redirectAttributes.addFlashAttribute(
                     "successMessage",
                     "Bill "
