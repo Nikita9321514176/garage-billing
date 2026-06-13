@@ -22,18 +22,76 @@
 
 <th:block th:fragment="content">
 
-    <!-- PAGE HEADER -->
-    <div class="page-header">
-        <h2><i class="bi bi-people-fill me-2 text-primary"></i>All Customers</h2>
-        <!--
-          th:href="@{/customer/new}"
-          @{} = URL expression. Spring adds context path automatically.
-          Equivalent to: href="/customer/new"
-        -->
-        <a th:href="@{/customer/new}" class="btn btn-primary">
-            <i class="bi bi-plus-lg me-1"></i>Add New Customer
-        </a>
+<!-- PAGE HEADER -->
+<div class="page-header">
+    <h2><i class="bi bi-people-fill me-2 text-primary"></i>All Customers</h2>
+
+    <a th:href="@{/customer/new}" class="btn btn-primary">
+        <i class="bi bi-plus-lg me-1"></i>Add New Customer
+    </a>
+</div>
+
+<!-- SEARCH BOX -->
+<div class="card mb-3">
+    <div class="card-body py-2">
+
+        <form th:action="@{/customer/list}"
+              method="get"
+              class="d-flex gap-2 align-items-center">
+
+            <div class="flex-grow-1">
+
+                <input type="text"
+                       name="search"
+                       class="form-control"
+                       placeholder="Search by customer name or phone..."
+                       th:value="${searchQuery}"
+                       autocomplete="off"/>
+
+            </div>
+
+            <button type="submit"
+                    class="btn btn-primary">
+
+                <i class="bi bi-search me-1"></i>Search
+
+            </button>
+
+            <a th:if="${searchQuery != null and !searchQuery.isEmpty()}"
+               th:href="@{/customer/list}"
+               class="btn btn-outline-secondary">
+
+                <i class="bi bi-x"></i> Clear
+
+            </a>
+
+        </form>
+
     </div>
+</div>
+
+<!-- SEARCH RESULT NOTICE -->
+<div th:if="${searchQuery != null and !searchQuery.isEmpty()}"
+     class="alert alert-info py-2 mb-3">
+
+    <i class="bi bi-funnel me-1"></i>
+
+    Showing results for
+    "<strong th:text="${searchQuery}">—</strong>"
+
+    &nbsp;·&nbsp;
+
+    <span th:text="${totalCount}">0</span>
+    found.
+
+    <a th:href="@{/customer/list}"
+       class="alert-link ms-2">
+
+        Show all customers
+
+    </a>
+
+</div>
 
     <!-- SUMMARY CARD -->
     <div class="row mb-3">

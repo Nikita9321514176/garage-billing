@@ -111,6 +111,26 @@ public class CustomerRepository {
         );
     }
 
+    // SEARCH BY NAME OR PHONE
+    public List<Customer> searchByNameOrPhone(String query) {
+
+        String sql = """
+            SELECT * FROM customers
+            WHERE name LIKE ?
+               OR phone LIKE ?
+            ORDER BY name ASC
+            """;
+
+        String pattern = "%" + query.trim() + "%";
+
+        return jdbcTemplate.query(
+                sql,
+                CUSTOMER_MAPPER,
+                pattern,
+                pattern
+        );
+    }
+
     // UPDATE CUSTOMER
     public int update(Customer customer) {
 

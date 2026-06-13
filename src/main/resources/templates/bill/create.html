@@ -11,11 +11,11 @@
 </div>
 
 <!--
-    IMPORTANT:
-    th:action="@{/bill/save}" is REQUIRED for Spring Security CSRF token.
-    If you use normal action="/bill/save", Spring Security gives 403 Forbidden.
+    th:action="@{/bill/save}" — REQUIRED for Spring Security CSRF token.
+    Plain action="/bill/save" gives 403 Forbidden.
 -->
-<form th:action="@{/bill/save}" method="post" id="billForm">
+<form th:action="@{/bill/save}" method="post" id="billForm"
+      onsubmit="return validateBeforeSubmit()">
 
 <div class="row g-4">
 
@@ -24,7 +24,7 @@
     ════════════════════════════════════ -->
     <div class="col-lg-7">
 
-        <!-- CUSTOMER CARD -->
+        <!-- ── CUSTOMER CARD ───────────────────────────────── -->
         <div class="card mb-3">
             <div class="card-header bg-primary text-white">
                 <i class="bi bi-person me-2"></i>Customer Details
@@ -35,27 +35,46 @@
                 <div class="mb-3">
                     <label class="form-label">Select Existing Customer</label>
 
-                    <select id="existingCustomerId"
-                            name="existingCustomerId"
-                            class="form-select"
-                            onchange="handleCustomerChange(this.value)">
+                    <!--
+                        existingCustomerId hidden input.
+                        When user picks from autocomplete, this gets set.
+                        When blank = new customer.
+                        BillController reads: billForm.getExistingCustomerId()
+                    -->
+                    <input type="hidden"
+                           id="existingCustomerId"
+                           name="existingCustomerId"/>
 
-                        <option value="">-- New Customer --</option>
+                    <div class="position-relative">
+                        <!--
+                            Autocomplete text input.
+                            User types here → JS calls /customer/api/search?q=
+                            Results appear below in #customerResults dropdown.
+                            On selection: hidden input gets customer.id value.
+                        -->
+                        <input type="text"
+                               id="customerSearch"
+                               class="form-control"
+                               placeholder="Search by name or phone..."
+                               autocomplete="off"/>
 
-                        <option th:each="cust : ${customers}"
-                                th:value="${cust.id}"
-                                th:text="${cust.name + ' (' + cust.phone + ')'}"
-                                th:selected="${cust.id == preselectedCustomerId}">
-                        </option>
-
-                    </select>
+                        <!--
+                            Results dropdown container.
+                            Populated by JS fetch() call.
+                            Hidden by default, shown when results arrive.
+                        -->
+                        <div id="customerResults"
+                             class="list-group position-absolute w-100 shadow"
+                             style="z-index:1050;display:none;max-height:250px;overflow-y:auto;background:white;">
+                        </div>
+                    </div>
 
                     <div class="form-text">
-                        Select existing or leave blank to add new customer below
+                        Search existing customer or leave blank to add new customer below
                     </div>
                 </div>
 
-                <!-- New customer fields -->
+                <!-- New customer fields — shown when no existing customer selected -->
                 <div id="newCustomerFields"
                      class="border rounded p-3 bg-light">
 
@@ -70,8 +89,8 @@
                             <label class="form-label">
                                 Name <span class="text-danger">*</span>
                             </label>
-
                             <input type="text"
+                                   id="customerNameInput"
                                    name="customerName"
                                    class="form-control form-control-sm"
                                    placeholder="Customer full name"/>
@@ -81,17 +100,17 @@
                             <label class="form-label">
                                 Phone <span class="text-danger">*</span>
                             </label>
-
                             <input type="tel"
+                                   id="customerPhoneInput"
                                    name="customerPhone"
                                    class="form-control form-control-sm"
                                    placeholder="10-digit mobile"
-                                   pattern="[0-9]{10}"/>
+                                   maxlength="10"
+                                   pattern="[6-9][0-9]{9}"/>
                         </div>
 
                         <div class="col-12">
                             <label class="form-label">Email</label>
-
                             <input type="email"
                                    name="customerEmail"
                                    class="form-control form-control-sm"
@@ -100,11 +119,13 @@
 
                     </div>
                 </div>
+                <!-- /newCustomerFields -->
 
             </div>
         </div>
+        <!-- /CUSTOMER CARD -->
 
-        <!-- CAR CARD -->
+        <!-- ── CAR CARD ────────────────────────────────────── -->
         <div class="card mb-3">
 
             <div class="card-header bg-success text-white">
@@ -114,9 +135,14 @@
             <div class="card-body">
 
                 <div class="mb-3">
-
                     <label class="form-label">Select Car</label>
 
+                    <!--
+                        Car dropdown.
+                        Populated server-side on page load (for pre-selected customer).
+                        Also populated via AJAX when customer is selected via search.
+                        BillController reads: billForm.getExistingCarId()
+                    -->
                     <select id="existingCarId"
                             name="existingCarId"
                             class="form-select"
@@ -135,7 +161,7 @@
                     </select>
                 </div>
 
-                <!-- New car fields -->
+                <!-- New car fields — shown when "+ Register new car" selected -->
                 <div id="newCarFields"
                      style="display:none"
                      class="border rounded p-3 bg-light">
@@ -151,7 +177,6 @@
                             <label class="form-label">
                                 Car Number <span class="text-danger">*</span>
                             </label>
-
                             <input type="text"
                                    name="carNumber"
                                    class="form-control form-control-sm car-number-plate"
@@ -163,121 +188,97 @@
                             <label class="form-label">
                                 Car Model <span class="text-danger">*</span>
                             </label>
-
                             <input type="text"
                                    name="carModel"
                                    class="form-control form-control-sm"
                                    placeholder="e.g. Swift, Innova"/>
                         </div>
 
-						<!-- Brand dropdown -->
-						<div class="col-md-6">
-						    <label class="form-label">Brand</label>
+                        <div class="col-md-6">
+                            <label class="form-label">Brand</label>
+                            <select name="carBrand"
+                                    class="form-select form-select-sm">
+                                <option value="">-- Select Brand --</option>
+                                <option value="Maruti Suzuki">Maruti Suzuki</option>
+                                <option value="Hyundai">Hyundai</option>
+                                <option value="Toyota">Toyota</option>
+                                <option value="Honda">Honda</option>
+                                <option value="Tata">Tata</option>
+                                <option value="Mahindra">Mahindra</option>
+                                <option value="Kia">Kia</option>
+                                <option value="Skoda">Skoda</option>
+                                <option value="Volkswagen">Volkswagen</option>
+                                <option value="Ford">Ford</option>
+                                <option value="Renault">Renault</option>
+                                <option value="Nissan">Nissan</option>
+                                <option value="MG">MG Motor</option>
+                                <option value="Jeep">Jeep</option>
+                                <option value="BMW">BMW</option>
+                                <option value="Mercedes">Mercedes-Benz</option>
+                                <option value="Audi">Audi</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
 
-						    <select name="carBrand"
-						            class="form-select form-select-sm">
+                        <div class="col-md-3">
+                            <label class="form-label">Year</label>
+                            <input type="number"
+                                   name="carManufactureYear"
+                                   class="form-control form-control-sm"
+                                   placeholder="e.g. 2021"
+                                   min="1980"
+                                   max="2030"/>
+                        </div>
 
-						        <option value="">-- Select Brand --</option>
-						        <option value="Maruti Suzuki">Maruti Suzuki</option>
-						        <option value="Hyundai">Hyundai</option>
-						        <option value="Toyota">Toyota</option>
-						        <option value="Honda">Honda</option>
-						        <option value="Tata">Tata</option>
-						        <option value="Mahindra">Mahindra</option>
-						        <option value="Kia">Kia</option>
-						        <option value="Skoda">Skoda</option>
-						        <option value="Volkswagen">Volkswagen</option>
-						        <option value="Ford">Ford</option>
-						        <option value="Renault">Renault</option>
-						        <option value="Nissan">Nissan</option>
-						        <option value="MG">MG Motor</option>
-						        <option value="Jeep">Jeep</option>
-						        <option value="BMW">BMW</option>
-						        <option value="Mercedes">Mercedes-Benz</option>
-						        <option value="Audi">Audi</option>
-						        <option value="Other">Other</option>
-						    </select>
-						</div>
+                        <div class="col-md-3">
+                            <label class="form-label">Color</label>
+                            <input type="text"
+                                   name="carColor"
+                                   class="form-control form-control-sm"
+                                   placeholder="e.g. White"/>
+                        </div>
 
-						<!-- Year of Manufacture -->
-						<div class="col-md-3">
-						    <label class="form-label">Year</label>
-
-						    <input type="number"
-						           name="carManufactureYear"
-						           class="form-control form-control-sm"
-						           placeholder="e.g. 2021"
-						           min="1980"
-						           max="2026"/>
-						</div>
-
-						<!-- Color -->
-						<div class="col-md-3">
-						    <label class="form-label">Color</label>
-
-						    <input type="text"
-						           name="carColor"
-						           class="form-control form-control-sm"
-						           placeholder="e.g. White"/>
-						</div>
                     </div>
                 </div>
+                <!-- /newCarFields -->
 
             </div>
         </div>
+        <!-- /CAR CARD -->
 
-        <!-- SERVICES CARD -->
+        <!-- ── SERVICES CARD ───────────────────────────────── -->
         <div class="card">
 
             <div class="card-header bg-dark text-white
                         d-flex justify-content-between align-items-center">
-
                 <span>
-                    <i class="bi bi-tools me-2"></i>
-                    Services / Work Done
+                    <i class="bi bi-tools me-2"></i>Services / Work Done
                 </span>
-
                 <button type="button"
                         class="btn btn-sm btn-success"
                         onclick="addServiceRow()">
-
-                    <i class="bi bi-plus-lg me-1"></i>
-                    Add Service
+                    <i class="bi bi-plus-lg me-1"></i>Add Service
                 </button>
-
             </div>
 
             <div class="card-body">
 
-                <!-- Column labels -->
                 <div class="row g-2 mb-2 d-none d-md-flex">
-
                     <div class="col-md-4">
-                        <small class="text-muted fw-semibold">
-                            SERVICE NAME *
-                        </small>
+                        <small class="text-muted fw-semibold">SERVICE NAME *</small>
                     </div>
-
                     <div class="col-md-4">
-                        <small class="text-muted fw-semibold">
-                            DESCRIPTION
-                        </small>
+                        <small class="text-muted fw-semibold">DESCRIPTION</small>
                     </div>
-
                     <div class="col-md-3">
-                        <small class="text-muted fw-semibold">
-                            AMOUNT *
-                        </small>
+                        <small class="text-muted fw-semibold">AMOUNT *</small>
                     </div>
-
                 </div>
 
-                <!-- Rows container -->
                 <div id="serviceRowsContainer">
 
-                    <!-- Default row -->
-                    <div class="service-row" id="serviceRow_0">
-
+                    <!-- Default first row — delete button disabled (last row protection) -->
+                    <div class="service-row mb-2" id="serviceRow_0">
                         <div class="row g-2 align-items-center">
 
                             <div class="col-md-4">
@@ -296,11 +297,8 @@
                             </div>
 
                             <div class="col-md-3">
-
                                 <div class="input-group input-group-sm">
-
                                     <span class="input-group-text">&#8377;</span>
-
                                     <input type="number"
                                            name="services[0].amount"
                                            class="form-control form-control-sm amount-input"
@@ -308,38 +306,39 @@
                                            min="0"
                                            step="0.01"
                                            oninput="calculateTotal()"/>
-
                                 </div>
                             </div>
 
                             <div class="col-md-1 text-center">
-
                                 <button type="button"
                                         class="btn btn-outline-danger btn-sm"
-                                        onclick="removeRow('serviceRow_0')">
-
+                                        onclick="removeRow('serviceRow_0')"
+                                        disabled
+                                        title="Cannot remove the only row">
                                     <i class="bi bi-trash"></i>
-
                                 </button>
-
                             </div>
 
                         </div>
                     </div>
+                    <!-- /serviceRow_0 -->
 
                 </div>
+                <!-- /serviceRowsContainer -->
 
             </div>
         </div>
+        <!-- /SERVICES CARD -->
 
     </div>
+    <!-- /LEFT COLUMN -->
 
     <!-- ════════════════════════════════════
          RIGHT COLUMN
     ════════════════════════════════════ -->
     <div class="col-lg-5">
 
-        <div class="card sticky-top" style="top:80px">
+        <div class="card sticky-top" style="top:80px;overflow-y:auto;max-height:calc(100vh - 100px)">
 
             <div class="card-header bg-dark text-white">
                 <i class="bi bi-receipt me-2"></i>Bill Summary
@@ -347,327 +346,723 @@
 
             <div class="card-body">
 
-				<!-- Total -->
-				<div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
-
-				    <span class="text-muted">Total Amount</span>
-
-				    <span id="totalAmountDisplay"
-				          class="fw-bold fs-4 text-primary">
-
-				        &#8377;0.00
-
-				    </span>
-
-				</div>
-
-				<input type="hidden"
-				       id="totalAmountHidden"
-				       name="totalAmount"
-				       value="0"/>
-
-				<!-- Discount input -->
-				<div class="mb-3">
-				    <label class="form-label">
-				        Discount
-				        <span class="text-muted small">(in ₹, optional)</span>
-				    </label>
-
-				    <div class="input-group">
-				        <span class="input-group-text">&#8377;</span>
-
-				        <input type="number"
-				               id="discountAmount"
-				               name="discountAmount"
-				               class="form-control"
-				               placeholder="0.00"
-				               min="0"
-				               step="0.01"
-				               value="0"
-				               oninput="calculateTotal()"/>
-				    </div>
-				</div>
-
-				<!-- Subtotal display -->
-				<div class="d-flex justify-content-between align-items-center mb-1">
-				    <span class="text-muted small">Subtotal</span>
-
-				    <span id="subtotalDisplay"
-				          class="small">
-
-				        &#8377;0.00
-
-				    </span>
-				</div>
-
-				<!-- Discount display -->
-				<div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom"
-				     id="discountRow"
-				     style="display:none !important">
-
-				    <span class="text-muted small">Discount</span>
-
-				    <span id="discountDisplay"
-				          class="small text-success">
-
-				        - &#8377;0.00
-
-				    </span>
-				</div>
-
-					   <!-- Payment Amount -->
-					   <div class="mb-3">
-					       <label class="form-label">Payment Received Now</label>
-
-					       <div class="input-group">
-					           <span class="input-group-text">&#8377;</span>
-
-					           <input type="number"
-					                  id="initialPayment"
-					                  name="initialPayment"
-					                  class="form-control"
-					                  placeholder="0.00"
-					                  min="0"
-					                  step="0.01"
-					                  value="0"
-					                  oninput="calculateTotal()"/>
-					       </div>
-
-					       <div class="form-text">
-					           Enter 0 if no payment today
-					       </div>
-					   </div>
-
-					   <!-- Payment Mode -->
-					   <div class="mb-3"
-					        id="paymentModeSection"
-					        style="display:none">
-
-					       <label class="form-label">
-					           Payment Mode
-					           <span class="text-danger">*</span>
-					       </label>
-
-					       <select name="initialPaymentMode"
-					               id="initialPaymentMode"
-					               class="form-select">
-
-					           <option value="">-- Select mode --</option>
-					           <option value="CASH">Cash</option>
-					           <option value="UPI">UPI</option>
-					           <option value="CARD">Card / Debit / Credit</option>
-					           <option value="CHEQUE">Cheque</option>
-					           <option value="BANK_TRANSFER">
-					               Bank Transfer / NEFT
-					           </option>
-
-					       </select>
-					   </div>
-
-					   <!-- Transaction Reference -->
-					   <div class="mb-3"
-					        id="paymentRefSection"
-					        style="display:none">
-
-					       <label class="form-label">
-					           Transaction Reference
-					           <span class="text-muted small">(optional)</span>
-					       </label>
-
-					       <input type="text"
-					              name="initialPaymentReference"
-					              class="form-control form-control-sm"
-					              placeholder="UPI ref / Cheque no. / Transaction ID"/>
-					   </div>
-
-                <!-- Balance -->
+                <!-- Total Amount -->
                 <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
-
-                    <span class="text-muted">Balance Due</span>
-
-                    <span id="balanceDisplay"
-                          class="fw-bold text-danger fs-5">
-
+                    <span class="text-muted">Total Amount</span>
+                    <span id="totalAmountDisplay" class="fw-bold fs-4 text-primary">
                         &#8377;0.00
-
                     </span>
-
                 </div>
 
-                <!-- Status -->
-                <div class="d-flex justify-content-between align-items-center mb-3">
+                <input type="hidden" id="totalAmountHidden" name="totalAmount" value="0"/>
 
-                    <span class="text-muted">Payment Status</span>
-
-                    <span id="statusPreview"
-                          class="badge badge-pending">
-
-                        PENDING
-
-                    </span>
-
-                </div>
-
-                <!-- Due date -->
-                <div class="mb-3">
-
+                <!-- Discount -->
+                <div class="mb-2">
                     <label class="form-label">
-                        Payment Due Date
+                        Discount <span class="text-muted small">(in ₹, optional)</span>
                     </label>
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text">&#8377;</span>
+                        <input type="number"
+                               id="discountAmount"
+                               name="discountAmount"
+                               class="form-control"
+                               placeholder="0"
+                               min="0"
+                               step="0.01"
+                               value="0"
+                               oninput="calculateTotal()"/>
+                    </div>
+                </div>
 
-                    <input type="date"
-                           name="dueDate"
-                           class="form-control"/>
+                <!-- Subtotal line -->
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="text-muted small">Subtotal</span>
+                    <span id="subtotalDisplay" class="small">&#8377;0.00</span>
+                </div>
 
+                <!-- Discount applied line — hidden until discount > 0 -->
+                <!--
+                    CRITICAL: NO !important here.
+                    style="display:none" can be overridden by JS.
+                    style="display:none !important" CANNOT be overridden by JS.
+                -->
+                <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom"
+                     id="discountRow"
+                     style="display:none">
+                    <span class="text-muted small">Discount Applied</span>
+                    <span id="discountDisplay" class="small text-success fw-semibold">
+                        - &#8377;0.00
+                    </span>
+                </div>
+
+                <!-- ── PAYMENT DETAILS BOX ─────────────────────────
+                     Always visible. Payment Mode and Reference are
+                     always shown so owner never misses them.
+                     JS still validates mode is selected before save.
+                ────────────────────────────────────────────────── -->
+                <div class="border rounded p-2 mb-3 bg-light">
+
+                    <!-- Amount Received -->
+                    <div class="mb-2">
+                        <label class="form-label fw-semibold mb-1">
+                            <i class="bi bi-cash-coin me-1 text-success"></i>
+                            Payment Received Now
+                        </label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text">&#8377;</span>
+                            <input type="number"
+                                   id="initialPayment"
+                                   name="initialPayment"
+                                   class="form-control"
+                                   placeholder="0.00"
+                                   min="0"
+                                   step="0.01"
+                                   value="0"
+                                   oninput="calculateTotal()"/>
+                        </div>
+                        <div class="form-text">Enter 0 if no payment today</div>
+                    </div>
+
+                    <!-- Payment Mode — ALWAYS VISIBLE -->
+                    <div class="mb-2" id="paymentModeSection">
+                        <label class="form-label mb-1">
+                            Payment Mode
+                            <span class="text-danger">*</span>
+                            <span class="text-muted small">(required if amount &gt; 0)</span>
+                        </label>
+                        <select name="initialPaymentMode"
+                                id="initialPaymentMode"
+                                class="form-select form-select-sm">
+                            <option value="">-- Select mode --</option>
+                            <option value="CASH">&#128181; Cash</option>
+                            <option value="UPI">&#128242; UPI (PhonePe / GPay / Paytm)</option>
+                            <option value="CARD">&#128179; Card (Debit / Credit)</option>
+                            <option value="CHEQUE">&#128196; Cheque</option>
+                            <option value="BANK_TRANSFER">&#127981; Bank Transfer / NEFT</option>
+                        </select>
+                    </div>
+
+                    <!-- Transaction Reference — ALWAYS VISIBLE -->
+                    <div id="paymentRefSection">
+                        <label class="form-label mb-1">
+                            Transaction Reference
+                            <span class="text-muted small">(optional)</span>
+                        </label>
+                        <input type="text"
+                               name="initialPaymentReference"
+                               class="form-control form-control-sm"
+                               placeholder="UPI ref no. / Cheque no. / Transaction ID"/>
+                    </div>
+
+                </div>
+                <!-- /PAYMENT DETAILS BOX -->
+
+                <!-- Balance Due -->
+                <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                    <span class="fw-semibold">Balance Due</span>
+                    <span id="balanceDisplay" class="fw-bold fs-5 text-danger">
+                        &#8377;0.00
+                    </span>
+                </div>
+
+                <!-- Payment Status -->
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="text-muted">Payment Status</span>
+                    <span id="statusPreview" class="badge badge-pending">PENDING</span>
+                </div>
+
+                <!-- Due Date -->
+                <div class="mb-3">
+                    <label class="form-label">Payment Due Date</label>
+                    <input type="date" name="dueDate" class="form-control form-control-sm"/>
                 </div>
 
                 <!-- Notes -->
                 <div class="mb-3">
-
                     <label class="form-label">Notes</label>
-
                     <textarea name="notes"
-                              class="form-control"
+                              class="form-control form-control-sm"
                               rows="2"
                               placeholder="Any special notes..."></textarea>
-
                 </div>
 
                 <hr/>
 
                 <div class="d-grid">
-
                     <button type="submit"
-                            class="btn btn-primary btn-lg">
-
-                        <i class="bi bi-save me-2"></i>
-                        Save Bill
-
+                            class="btn btn-primary btn-lg"
+                            id="saveBillBtn">
+                        <i class="bi bi-save me-2"></i>Save Bill
                     </button>
-
                 </div>
 
                 <div class="mt-2 text-center">
-                    <small class="text-muted">
-                        Bill number will be auto-generated
-                    </small>
+                    <small class="text-muted">Bill number will be auto-generated</small>
                 </div>
 
             </div>
         </div>
     </div>
+    <!-- /RIGHT COLUMN -->
 
 </div>
 </form>
 
-<!-- PAGE SCRIPT -->
+<!-- ════════════════════════════════════════════════════════════
+     PAGE SCRIPT
+     ════════════════════════════════════════════════════════════
+
+     ALL JS IS IN ONE SINGLE DOMContentLoaded block.
+     Previously there were TWO DOMContentLoaded blocks which
+     caused a syntax error that silently broke ALL JavaScript.
+
+     FUNCTIONS DEFINED HERE:
+     1. calculateTotal()        — was missing, bill summary showed ₹0.00 always
+     2. addServiceRow()         — was missing, Add Service button did nothing
+     3. removeRow()             — was missing, trash button did nothing
+     4. updateDeleteButtons()   — helper for row management
+     5. loadCarsForCustomer()   — URL fixed: was /car/customer/{id}
+                                            now /bill/api/customers/{id}/cars
+     6. handleCarChange()       — preserved from original, unchanged
+     7. validateBeforeSubmit()  — prevents saving empty/invalid forms
+     8. Customer autocomplete   — preserved from original, URL was already correct
+════════════════════════════════════════════════════════════ -->
 <script th:inline="javascript">
 /*<![CDATA[*/
 
+// Thymeleaf injects these server-side values at render time
 var preselectedCustomerId = /*[[${preselectedCustomerId}]]*/ null;
 var preselectedCarId      = /*[[${preselectedCarId}]]*/ null;
+/*]]>*/
+</script>
 
-document.addEventListener('DOMContentLoaded', function() {
+<!-- All functions in plain script block — no Thymeleaf parsing, safe for < > operators -->
+<script>
 
-    var custSelect = document.getElementById('existingCustomerId');
+// Global row index — NEVER resets, NEVER reuses values.
+// Even if row 1 is deleted, next new row gets index 2, not 1.
+// This prevents Spring from seeing duplicate services[1] on submit.
+var rowIndex = 1;
 
+// Debounce timer for customer search (avoids API call on every keystroke)
+var searchTimer = null;
+
+// ════════════════════════════════════════════════════════════
+// DOMContentLoaded — runs ONCE when page is ready.
+// There is ONLY ONE of these. Previously having two caused
+// a JS syntax error that broke everything silently.
+// ════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', function () {
+
+    // ── Pre-selected customer (e.g. from customer detail page) ──
     if (preselectedCustomerId) {
-
-        custSelect.value = String(preselectedCustomerId);
-
+        document.getElementById('existingCustomerId').value = preselectedCustomerId;
         document.getElementById('newCustomerFields').style.display = 'none';
-
         loadCarsForCustomer(preselectedCustomerId);
-
-    } else if (custSelect && custSelect.value && custSelect.value !== '') {
-
-        document.getElementById('newCustomerFields').style.display = 'none';
-
-        loadCarsForCustomer(custSelect.value);
-
     } else {
-
         document.getElementById('newCustomerFields').style.display = 'block';
     }
 
-	var payInput = document.getElementById('initialPayment');
+    // ── Pre-selected car (e.g. from search page) ────────────────
+    if (preselectedCarId) {
+        var carSel = document.getElementById('existingCarId');
+        if (carSel) {
+            carSel.value = String(preselectedCarId);
+            handleCarChange(carSel.value);
+        }
+    }
 
-	if (payInput) {
+    // ── Wire up customer autocomplete search ────────────────────
+    var customerSearchInput = document.getElementById('customerSearch');
+    if (customerSearchInput) {
+        customerSearchInput.addEventListener('input', handleCustomerSearchInput);
+    }
 
-	    payInput.addEventListener('input', function() {
+    // ── Close autocomplete dropdown when clicking outside ───────
+    document.addEventListener('click', function (e) {
+        var searchInput  = document.getElementById('customerSearch');
+        var resultsBox   = document.getElementById('customerResults');
+        if (searchInput && resultsBox &&
+            !searchInput.contains(e.target) &&
+            !resultsBox.contains(e.target)) {
+            resultsBox.style.display = 'none';
+        }
+    });
 
-	        var amount = parseFloat(this.value) || 0;
-
-	        var modeSection =
-	            document.getElementById('paymentModeSection');
-
-	        var refSection =
-	            document.getElementById('paymentRefSection');
-
-	        if (amount > 0) {
-
-	            modeSection.style.display = 'block';
-	            refSection.style.display = 'block';
-
-	        } else {
-
-	            modeSection.style.display = 'none';
-	            refSection.style.display = 'none';
-	        }
-
-	        calculateTotal();
-	    });
-
-	    // Run once on page load
-	    payInput.dispatchEvent(new Event('input'));
-	}
+    // ── Initial calculation (sets all displays to ₹0.00) ────────
     calculateTotal();
 });
 
-function handleCustomerChange(customerId) {
 
-    if (!customerId || customerId === '') {
+// ════════════════════════════════════════════════════════════
+// calculateTotal()
+//
+// Was MISSING entirely from the previous version.
+// Called by: oninput on every amount-input, discount, payment fields.
+//
+// LOGIC:
+//   rawTotal  = sum of all service .amount-input values
+//   discount  = value from #discountAmount input
+//   subtotal  = rawTotal - discount
+//   payNow    = value from #initialPayment
+//   balance   = subtotal - payNow
+//   status    = PAID / PARTIAL / PENDING based on balance + payNow
+// ════════════════════════════════════════════════════════════
+function calculateTotal() {
 
-        document.getElementById('newCustomerFields').style.display = 'block';
+    // Sum every input with class="amount-input" (all service rows)
+    var inputs   = document.querySelectorAll('.amount-input');
+    var rawTotal = 0;
+    inputs.forEach(function (inp) {
+        var v = parseFloat(inp.value) || 0;
+        if (v < 0) v = 0;
+        rawTotal += v;
+    });
 
-        var carSel = document.getElementById('existingCarId');
+    // Discount
+    var discEl   = document.getElementById('discountAmount');
+    var discount = parseFloat(discEl ? discEl.value : 0) || 0;
+    if (discount < 0)        discount = 0;
+    if (discount > rawTotal) discount = rawTotal; // can't discount more than total
 
-        carSel.innerHTML =
-            '<option value="">-- Select or add new --</option>' +
-            '<option value="0">+ Register new car</option>';
+    // Subtotal = rawTotal - discount
+    var subtotal = rawTotal - discount;
 
-        document.getElementById('newCarFields').style.display = 'none';
-
-    } else {
-
-        document.getElementById('newCustomerFields').style.display = 'none';
-
-        loadCarsForCustomer(customerId);
+    // Payment received now
+    var payEl  = document.getElementById('initialPayment');
+    var payNow = parseFloat(payEl ? payEl.value : 0) || 0;
+    if (payNow < 0)        payNow = 0;
+    if (payNow > subtotal) {           // cap payment at subtotal
+        payNow = subtotal;
+        if (payEl) payEl.value = subtotal.toFixed(2);
     }
+
+    // Balance
+    var balance = subtotal - payNow;
+    if (balance < 0) balance = 0;
+
+    // Status
+    var status;
+    if (subtotal > 0 && balance === 0)        status = 'PAID';
+    else if (payNow > 0 && balance > 0)       status = 'PARTIAL';
+    else                                       status = 'PENDING';
+
+    // ── Update display elements ──────────────────────────────────
+
+    var totalDisp = document.getElementById('totalAmountDisplay');
+    if (totalDisp) totalDisp.textContent = '₹' + rawTotal.toFixed(2);
+
+    var totalHid = document.getElementById('totalAmountHidden');
+    if (totalHid) totalHid.value = rawTotal.toFixed(2);
+
+    var subDisp = document.getElementById('subtotalDisplay');
+    if (subDisp) subDisp.textContent = '₹' + subtotal.toFixed(2);
+
+    // Discount row: show only when discount > 0
+    var discRow  = document.getElementById('discountRow');
+    var discDisp = document.getElementById('discountDisplay');
+    if (discRow) {
+        discRow.style.display = discount > 0 ? 'flex' : 'none';
+        if (discDisp) discDisp.textContent = '- ₹' + discount.toFixed(2);
+    }
+
+    // Balance — green when zero, red when owing
+    var balEl = document.getElementById('balanceDisplay');
+    if (balEl) {
+        balEl.textContent = '₹' + balance.toFixed(2);
+        balEl.className   = balance === 0
+            ? 'fw-bold fs-5 text-success'
+            : 'fw-bold fs-5 text-danger';
+    }
+
+    // Status badge
+    var statusEl = document.getElementById('statusPreview');
+    if (statusEl) {
+        statusEl.textContent = status;
+        statusEl.className   = 'badge fs-6 badge-' + status.toLowerCase();
+    }
+
+    // Payment mode + ref sections are always visible now.
+    // No show/hide needed — they live inside the payment box permanently.
+    // Validation in validateBeforeSubmit() enforces mode selection when payNow > 0.
 }
 
+
+// ════════════════════════════════════════════════════════════
+// addServiceRow()
+//
+// Was MISSING entirely. "Add Service" button called this
+// function but it was never defined → silent fail.
+//
+// Uses always-incrementing rowIndex so Spring never sees
+// duplicate services[N] keys even after deletions.
+// ════════════════════════════════════════════════════════════
+function addServiceRow() {
+
+    var container = document.getElementById('serviceRowsContainer');
+    var idx = rowIndex; // capture before incrementing
+
+    var html =
+        '<div class="service-row mb-2" id="serviceRow_' + idx + '">' +
+            '<div class="row g-2 align-items-center">' +
+
+                '<div class="col-md-4">' +
+                    '<input type="text"' +
+                           ' name="services[' + idx + '].serviceName"' +
+                           ' class="form-control form-control-sm"' +
+                           ' placeholder="e.g. Brake Pads"' +
+                           ' required/>' +
+                '</div>' +
+
+                '<div class="col-md-4">' +
+                    '<input type="text"' +
+                           ' name="services[' + idx + '].description"' +
+                           ' class="form-control form-control-sm"' +
+                           ' placeholder="Description (optional)"/>' +
+                '</div>' +
+
+                '<div class="col-md-3">' +
+                    '<div class="input-group input-group-sm">' +
+                        '<span class="input-group-text">&#8377;</span>' +
+                        '<input type="number"' +
+                               ' name="services[' + idx + '].amount"' +
+                               ' class="form-control form-control-sm amount-input"' +
+                               ' placeholder="0.00"' +
+                               ' min="0" step="0.01"' +
+                               ' oninput="calculateTotal()"/>' +
+                    '</div>' +
+                '</div>' +
+
+                '<div class="col-md-1 text-center">' +
+                    '<button type="button"' +
+                            ' class="btn btn-outline-danger btn-sm"' +
+                            ' onclick="removeRow(\'serviceRow_' + idx + '\')"' +
+                            ' title="Remove this service">' +
+                        '<i class="bi bi-trash"></i>' +
+                    '</button>' +
+                '</div>' +
+
+            '</div>' +
+        '</div>';
+
+    container.insertAdjacentHTML('beforeend', html);
+    rowIndex++; // increment AFTER capturing idx
+
+    updateDeleteButtons();
+
+    // Focus the new service name input
+    var newRow = document.getElementById('serviceRow_' + idx);
+    if (newRow) {
+        var nameInput = newRow.querySelector('input[type="text"]');
+        if (nameInput) nameInput.focus();
+    }
+
+    calculateTotal();
+}
+
+
+// ════════════════════════════════════════════════════════════
+// removeRow(rowId)
+//
+// Was MISSING entirely. Trash buttons called this function
+// but it was never defined → silent fail.
+// ════════════════════════════════════════════════════════════
+function removeRow(rowId) {
+
+    var allRows = document.querySelectorAll('.service-row');
+
+    if (allRows.length <= 1) {
+        alert('At least one service is required.');
+        return;
+    }
+
+    var row = document.getElementById(rowId);
+    if (row) row.remove();
+
+    updateDeleteButtons();
+    calculateTotal();
+}
+
+
+// ─────────────────────────────────────────────────────────────
+// updateDeleteButtons()
+// Disables trash button when only 1 row remains (can't delete last row).
+// Re-enables all buttons when 2+ rows exist.
+// ─────────────────────────────────────────────────────────────
+function updateDeleteButtons() {
+
+    var allRows = document.querySelectorAll('.service-row');
+    var btns    = document.querySelectorAll('.service-row .btn-outline-danger');
+
+    btns.forEach(function (btn) {
+        btn.disabled = (allRows.length === 1);
+    });
+}
+
+
+// ════════════════════════════════════════════════════════════
+// loadCarsForCustomer(customerId)
+//
+// FIX: URL was "/car/customer/{id}" — no such endpoint exists.
+//      BillController has: @GetMapping("/api/customers/{customerId}/cars")
+//      with @RequestMapping("/bill") on the class.
+//      Correct URL = /bill/api/customers/{id}/cars
+// ════════════════════════════════════════════════════════════
+function loadCarsForCustomer(customerId) {
+
+    if (!customerId || customerId === '' || customerId === '0') return;
+
+    var carSelect = document.getElementById('existingCarId');
+    if (!carSelect) return;
+
+    carSelect.innerHTML = '<option value="">Loading cars...</option>';
+
+    // CORRECTED URL — matches BillController @GetMapping("/api/customers/{customerId}/cars")
+    fetch('/bill/api/customers/' + customerId + '/cars')
+        .then(function (res) {
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return res.json();
+        })
+        .then(function (cars) {
+
+            var options = '<option value="">-- Select Car --</option>';
+
+            if (cars.length === 0) {
+                options += '<option value="" disabled>No cars registered yet</option>';
+            }
+
+            cars.forEach(function (car) {
+                options +=
+                    '<option value="' + car.id + '">' +
+                        car.carNumber + ' — ' + car.carModel +
+                    '</option>';
+            });
+
+            options += '<option value="0">+ Register new car</option>';
+
+            carSelect.innerHTML = options;
+
+            // Apply pre-selected car if coming from another page
+            if (preselectedCarId) {
+                carSelect.value = String(preselectedCarId);
+                handleCarChange(carSelect.value);
+            }
+        })
+        .catch(function (err) {
+            console.error('Failed to load cars:', err);
+            carSelect.innerHTML =
+                '<option value="">-- Select or add new --</option>' +
+                '<option value="0">+ Register new car</option>';
+        });
+}
+
+
+// ─────────────────────────────────────────────────────────────
+// handleCarChange(value)
+// Shows/hides new car fields when "+ Register new car" is selected.
+// ─────────────────────────────────────────────────────────────
 function handleCarChange(value) {
 
     var newCarFields = document.getElementById('newCarFields');
-
     if (!newCarFields) return;
 
-    if (value === '0' || value === '') {
-
+    if (value === '0') {
         newCarFields.style.display = 'block';
-
-        newCarFields.scrollIntoView({
-            behavior: 'smooth',
-            block: 'nearest'
-        });
-
+        newCarFields.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     } else {
-
         newCarFields.style.display = 'none';
     }
 }
 
-/*]]>*/
+
+// ════════════════════════════════════════════════════════════
+// CUSTOMER AUTOCOMPLETE SEARCH
+//
+// Called on every keystroke in #customerSearch input.
+// Waits 300ms after typing stops (debounce) then calls:
+//   GET /customer/api/search?q=keyword
+//   → CustomerController @GetMapping("/api/search")
+//   → Returns List<Customer> as JSON
+//
+// URL /customer/api/search is CORRECT — CustomerController
+// has @RequestMapping("/customer") + @GetMapping("/api/search")
+// ════════════════════════════════════════════════════════════
+function handleCustomerSearchInput() {
+
+    var keyword = this.value.trim();
+    var resultsBox     = document.getElementById('customerResults');
+    var hiddenIdField  = document.getElementById('existingCustomerId');
+    var newCustFields  = document.getElementById('newCustomerFields');
+
+    // Clear any previously selected customer when user starts typing again
+    hiddenIdField.value = '';
+
+    // If less than 2 chars typed: hide dropdown, show new customer form
+    if (keyword.length < 2) {
+        resultsBox.style.display  = 'none';
+        resultsBox.innerHTML      = '';
+        newCustFields.style.display = 'block';
+        return;
+    }
+
+    // Debounce: cancel previous timer, start new 300ms timer
+    clearTimeout(searchTimer);
+
+    searchTimer = setTimeout(function () {
+
+        // URL is correct: CustomerController handles /customer/api/search
+        fetch('/customer/api/search?q=' + encodeURIComponent(keyword))
+            .then(function (res) {
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                return res.json();
+            })
+            .then(function (customers) {
+
+                resultsBox.innerHTML = '';
+
+                if (!customers || customers.length === 0) {
+                    // No match — show "not found" message and keep new customer form visible
+                    resultsBox.innerHTML =
+                        '<div class="list-group-item text-muted small py-2">' +
+                            '<i class="bi bi-person-x me-1"></i>' +
+                            'No customer found — fill in new customer details below' +
+                        '</div>';
+                    resultsBox.style.display  = 'block';
+                    newCustFields.style.display = 'block';
+                    return;
+                }
+
+                // Build result items
+                customers.forEach(function (customer) {
+
+                    var item = document.createElement('button');
+                    item.type      = 'button';
+                    item.className = 'list-group-item list-group-item-action py-2';
+                    item.innerHTML =
+                        '<strong>' + escapeHtml(customer.name) + '</strong>' +
+                        '<br><small class="text-muted">' +
+                            '<i class="bi bi-telephone me-1"></i>' + escapeHtml(customer.phone) +
+                        '</small>';
+
+                    item.addEventListener('click', function () {
+                        onCustomerSelected(customer);
+                    });
+
+                    resultsBox.appendChild(item);
+                });
+
+                resultsBox.style.display = 'block';
+            })
+            .catch(function (err) {
+                console.error('Customer search error:', err);
+                resultsBox.style.display = 'none';
+            });
+
+    }, 300); // wait 300ms after last keystroke
+}
+
+
+// ─────────────────────────────────────────────────────────────
+// onCustomerSelected(customer)
+// Called when user clicks a result in the autocomplete dropdown.
+// 1. Fills the search box with customer name + phone
+// 2. Sets the hidden existingCustomerId field
+// 3. Hides new customer fields (not needed for existing customer)
+// 4. Loads their cars into the car dropdown via AJAX
+// ─────────────────────────────────────────────────────────────
+function onCustomerSelected(customer) {
+
+    // Show selected customer in the search box
+    var searchInput = document.getElementById('customerSearch');
+    searchInput.value = customer.name + ' (' + customer.phone + ')';
+
+    // Set the hidden field that the controller reads
+    document.getElementById('existingCustomerId').value = customer.id;
+
+    // Hide dropdown
+    var resultsBox = document.getElementById('customerResults');
+    resultsBox.innerHTML      = '';
+    resultsBox.style.display  = 'none';
+
+    // Hide new customer fields — we have an existing customer
+    document.getElementById('newCustomerFields').style.display = 'none';
+
+    // Load this customer's cars
+    loadCarsForCustomer(customer.id);
+}
+
+
+// ─────────────────────────────────────────────────────────────
+// validateBeforeSubmit()
+// Called by form's onsubmit. Returns false to block submit if invalid.
+// ─────────────────────────────────────────────────────────────
+function validateBeforeSubmit() {
+
+    // Must have at least one service with a name
+    var serviceNames = document.querySelectorAll('[name$=".serviceName"]');
+    var hasService   = false;
+    serviceNames.forEach(function (inp) {
+        if (inp.value.trim() !== '') hasService = true;
+    });
+    if (!hasService) {
+        alert('Please add at least one service before saving.');
+        return false;
+    }
+
+    // If payment > 0, payment mode must be selected
+    var payNow = parseFloat(document.getElementById('initialPayment').value) || 0;
+    if (payNow > 0) {
+        var modeSelect = document.getElementById('initialPaymentMode');
+        if (!modeSelect || !modeSelect.value) {
+            alert('Please select a payment mode (Cash / UPI / Card etc.).');
+            if (modeSelect) modeSelect.focus();
+            return false;
+        }
+    }
+
+    // If new customer, name + phone required
+    var custId = document.getElementById('existingCustomerId').value;
+    if (!custId || custId === '') {
+        var nameInp  = document.getElementById('customerNameInput');
+        var phoneInp = document.getElementById('customerPhoneInput');
+        if (nameInp && !nameInp.value.trim()) {
+            alert('Please enter customer name.');
+            nameInp.focus();
+            return false;
+        }
+        if (phoneInp && !phoneInp.value.trim()) {
+            alert('Please enter customer phone number.');
+            phoneInp.focus();
+            return false;
+        }
+    }
+
+    // Prevent double-submit
+    var btn = document.getElementById('saveBillBtn');
+    if (btn) {
+        btn.disabled  = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
+    }
+
+    return true;
+}
+
+
+// ─────────────────────────────────────────────────────────────
+// escapeHtml(str)
+// Prevents XSS when inserting customer names into innerHTML.
+// e.g. prevents XSS injection from customer name fields.
+// ─────────────────────────────────────────────────────────────
+function escapeHtml(str) {
+    if (!str) return '';
+    // Thymeleaf parses angle brackets as HTML even inside CDATA.
+    // Using DOM method instead of regex is 100% safe.
+    var div = document.createElement('div');
+    div.appendChild(document.createTextNode(str));
+    return div.innerHTML;
+}
+
 </script>
 
 </th:block>

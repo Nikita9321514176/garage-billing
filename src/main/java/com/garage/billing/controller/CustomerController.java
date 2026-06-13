@@ -1,4 +1,5 @@
 package com.garage.billing.controller;
+import org.springframework.web.bind.annotation.ResponseBody;
 
 import org.springframework.ui.Model;
 import org.springframework.stereotype.Controller;
@@ -33,13 +34,28 @@ public class CustomerController {
 
     // ── LIST ALL CUSTOMERS ─────────────────────────────────
     @GetMapping("/list")
-    public String listCustomers(Model model) {
+    public String listCustomers(
+            // Optional search query — if present, filter by name or phone
+            // If absent (null), show all customers as before
+            @RequestParam(value = "search", required = false)
+                String search,
+            Model model
+    ) {
+        List<Customer> customers;
 
-        List<Customer> customers = customerService.findAll();
+        if (search != null && !search.trim().isEmpty()) {
+            // Search mode — filter by name or phone
+            customers = customerService.searchByNameOrPhone(
+                search.trim());
+            model.addAttribute("searchQuery", search.trim());
+        } else {
+            // Normal mode — show all customers
+            customers = customerService.findAll();
+            model.addAttribute("searchQuery", "");
+        }
 
         model.addAttribute("customers", customers);
         model.addAttribute("totalCount", customers.size());
-
         return "customer/list";
     }
 
@@ -173,5 +189,21 @@ public class CustomerController {
         model.addAttribute("resultCount", results.size());
 
         return "customer/search";
+    }
+
+    // ── AJAX CUSTOMER SEARCH FOR AUTOCOMPLETE ────────────────
+    @GetMapping("/api/search")
+    @ResponseBody
+    public List<Customer> searchCustomersApi(
+            @RequestParam("q") String query
+    ) {
+
+        if (query == null || query.trim().isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+
+        return customerService.searchByNameOrPhone(
+                query.trim()
+        );
     }
 }

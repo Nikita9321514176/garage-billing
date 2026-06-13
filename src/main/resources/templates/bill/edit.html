@@ -6,313 +6,539 @@
 <div class="page-header">
     <h2>
         <i class="bi bi-pencil-square me-2 text-warning"></i>
-        Edit Bill:
-        <span th:text="${bill.billNumber}">—</span>
+        Edit Bill: <span th:text="${bill.billNumber}">—</span>
     </h2>
-    <a th:href="@{/bill/{id}(id=${bill.id})}"
-       class="btn btn-outline-secondary btn-sm">
+    <a th:href="@{/bill/{id}(id=${bill.id})}" class="btn btn-outline-secondary btn-sm">
         <i class="bi bi-arrow-left me-1"></i>Cancel
     </a>
 </div>
 
-<!--
-    Important notice at the top — explains what can and
-    cannot be changed. The customer and car cannot be
-    changed because that would corrupt financial history.
--->
 <div class="alert alert-info mb-4">
     <i class="bi bi-info-circle me-2"></i>
-    <strong>What you can edit:</strong>
-    services, amounts, due date, notes, payment received.
+    <strong>What you can edit:</strong> services, amounts, due date, notes, payment received.
     <br>
-    <strong>What cannot be changed:</strong>
-    bill number, customer, and car
+    <strong>What cannot be changed:</strong> bill number, customer, and car
     (changing these would corrupt payment history).
 </div>
 
-<!--
-    th:action="@{/bill/{id}/edit(id=${bill.id})}"
-    Posts to /bill/5/edit — Spring updates bill with id=5.
-    th:action adds CSRF token automatically.
--->
 <form th:action="@{/bill/{id}/edit(id=${bill.id})}"
-      method="post" id="billForm">
+      method="post" id="billForm"
+      onsubmit="return validateEditForm()">
 
-<div class="row g-4">
+    <!--
+        Hidden inputs carry server values safely into JS.
+        Placed at top of form so they exist in DOM immediately.
+    -->
+    <input type="hidden" id="paidAmountData"
+           th:value="${bill.paidAmount != null ? bill.paidAmount : 0}"/>
+    <input type="hidden" id="discountAmountData"
+           th:value="${bill.discountAmount != null ? bill.discountAmount : 0}"/>
 
-    <!-- ══ LEFT COLUMN ════════════════════════════════ -->
-    <div class="col-lg-7">
+    <div class="row g-4">
 
-        <!-- Read-only customer and car info -->
-        <div class="card mb-3">
-            <div class="card-header bg-secondary text-white">
-                <i class="bi bi-info-circle me-2"></i>
-                Bill Information (read-only)
-            </div>
-            <div class="card-body">
-                <div class="row g-2">
-                    <div class="col-md-4">
-                        <label class="form-label small text-muted">
-                            Bill Number
-                        </label>
-                        <input type="text"
-                               class="form-control"
-                               th:value="${bill.billNumber}"
-                               disabled/>
-                        <!-- disabled = shown but not submitted -->
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label small text-muted">
-                            Customer
-                        </label>
-                        <input type="text"
-                               class="form-control"
-                               th:value="${bill.customerName}"
-                               disabled/>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label small text-muted">
-                            Car Number
-                        </label>
-                        <input type="text"
-                               class="form-control car-number-plate"
-                               th:value="${bill.carNumber}"
-                               disabled/>
-                    </div>
+        <!-- ══ LEFT COLUMN ════════════════════════════════ -->
+        <div class="col-lg-7">
+
+            <!-- Read-only bill info -->
+            <div class="card mb-3">
+                <div class="card-header bg-secondary text-white">
+                    <i class="bi bi-info-circle me-2"></i>Bill Information (read-only)
                 </div>
-            </div>
-        </div>
-
-        <!-- Editable services section -->
-        <div class="card">
-            <div class="card-header bg-warning text-dark
-                        d-flex justify-content-between
-                        align-items-center">
-                <span>
-                    <i class="bi bi-tools me-2"></i>
-                    Edit Services
-                </span>
-                <button type="button"
-                        class="btn btn-sm btn-dark"
-                        onclick="addServiceRow()">
-                    <i class="bi bi-plus-lg me-1"></i>
-                    Add Service
-                </button>
-            </div>
-            <div class="card-body">
-
-                <!-- Column headers -->
-                <div class="row g-2 mb-2 d-none d-md-flex">
-                    <div class="col-md-4">
-                        <small class="text-muted fw-semibold">
-                            SERVICE NAME *
-                        </small>
-                    </div>
-                    <div class="col-md-4">
-                        <small class="text-muted fw-semibold">
-                            DESCRIPTION
-                        </small>
-                    </div>
-                    <div class="col-md-3">
-                        <small class="text-muted fw-semibold">
-                            AMOUNT *
-                        </small>
-                    </div>
-                </div>
-
-                <div id="serviceRowsContainer">
-                    <!--
-                        th:each loops through the existing services
-                        and creates a pre-filled row for each one.
-
-                        th:value="${svc.serviceName}" pre-fills
-                        the service name from the database.
-
-                        The name attribute uses the loop index
-                        (iterStat.index) to create the array:
-                        services[0].serviceName
-                        services[1].serviceName
-                        etc.
-                    -->
-                    <div th:each="svc, iterStat : ${services}"
-                         class="service-row"
-                         th:id="'serviceRow_' + ${iterStat.index}">
-                        <div class="row g-2 align-items-center">
-                            <div class="col-md-4">
-                                <input type="text"
-                                       th:name="'services[' + ${iterStat.index} + '].serviceName'"
-                                       class="form-control form-control-sm"
-                                       th:value="${svc.serviceName}"
-                                       placeholder="Service name"
-                                       required/>
-                            </div>
-                            <div class="col-md-4">
-                                <input type="text"
-                                       th:name="'services[' + ${iterStat.index} + '].description'"
-                                       class="form-control form-control-sm"
-                                       th:value="${svc.description}"
-                                       placeholder="Description (optional)"/>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="input-group input-group-sm">
-                                    <span class="input-group-text">
-                                        &#8377;
-                                    </span>
-                                    <input type="number"
-                                           th:name="'services[' + ${iterStat.index} + '].amount'"
-                                           class="form-control form-control-sm amount-input"
-                                           th:value="${svc.amount}"
-                                           min="0"
-                                           step="0.01"
-                                           oninput="calculateTotal()"
-                                           required/>
-                                </div>
-                            </div>
-                            <div class="col-md-1 text-center">
-                                <button type="button"
-                                        class="btn btn-outline-danger btn-sm"
-                                        th:onclick="'removeRow(\'serviceRow_' + ${iterStat.index} + '\')'">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            </div>
+                <div class="card-body">
+                    <div class="row g-2">
+                        <div class="col-md-4">
+                            <label class="form-label small text-muted">Bill Number</label>
+                            <input type="text" class="form-control" th:value="${bill.billNumber}" disabled/>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small text-muted">Customer</label>
+                            <input type="text" class="form-control" th:value="${bill.customerName}" disabled/>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small text-muted">Car Number</label>
+                            <input type="text" class="form-control car-number-plate" th:value="${bill.carNumber}" disabled/>
                         </div>
                     </div>
                 </div>
-
             </div>
-        </div>
 
-    </div><!-- /left col -->
-
-    <!-- ══ RIGHT COLUMN ═══════════════════════════════ -->
-    <div class="col-lg-5">
-        <div class="card sticky-top" style="top:80px">
-            <div class="card-header bg-warning text-dark">
-                <i class="bi bi-receipt me-2"></i>
-                Updated Summary
-            </div>
-            <div class="card-body">
-
-                <!-- New total display (updates live) -->
-                <div class="d-flex justify-content-between
-                            align-items-center mb-3 pb-2
-                            border-bottom">
-                    <span class="text-muted">New Total</span>
-                    <span id="totalAmountDisplay"
-                          class="fw-bold fs-4 text-primary">
-                        &#8377;0.00
-                    </span>
-                </div>
-                <input type="hidden"
-                       id="totalAmountHidden"
-                       name="totalAmount"
-                       value="0"/>
-
-                <!-- Payment received (editable) -->
-                <div class="mb-3">
-                    <label class="form-label">
-                        Payment Received
-                    </label>
-                    <div class="input-group">
-                        <span class="input-group-text">
-                            &#8377;
-                        </span>
-                        <input type="number"
-                               id="initialPayment"
-                               name="initialPayment"
-                               class="form-control"
-                               th:value="${bill.paidAmount}"
-                               min="0"
-                               step="0.01"
-                               oninput="calculateTotal()"/>
-                    </div>
-                </div>
-
-                <!-- Balance -->
-                <div class="d-flex justify-content-between
-                            align-items-center mb-3 pb-2
-                            border-bottom">
-                    <span class="text-muted">Balance Due</span>
-                    <span id="balanceDisplay"
-                          class="fw-bold text-danger fs-5">
-                        &#8377;0.00
-                    </span>
-                </div>
-
-                <!-- Status preview -->
-                <div class="d-flex justify-content-between
-                            align-items-center mb-3">
-                    <span class="text-muted">Status</span>
-                    <span id="statusPreview"
-                          class="badge badge-pending">
-                        PENDING
-                    </span>
-                </div>
-
-                <!-- Due date -->
-                <div class="mb-3">
-                    <label class="form-label">
-                        Due Date
-                    </label>
-                    <input type="date"
-                           name="dueDate"
-                           class="form-control"
-                           th:value="${bill.dueDate}"/>
-                </div>
-
-                <!-- Notes -->
-                <div class="mb-3">
-                    <label class="form-label">Notes</label>
-                    <textarea name="notes"
-                              class="form-control"
-                              rows="2"
-                              th:text="${bill.notes}">
-                    </textarea>
-                </div>
-
-                <hr/>
-
-                <div class="d-grid gap-2">
-                    <button type="submit"
-                            class="btn btn-warning btn-lg fw-semibold">
-                        <i class="bi bi-save me-2"></i>
-                        Save Changes
+            <!-- Editable services -->
+            <div class="card">
+                <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-tools me-2"></i>Edit Services</span>
+                    <button type="button" class="btn btn-sm btn-dark" onclick="addServiceRow()">
+                        <i class="bi bi-plus-lg me-1"></i>Add Service
                     </button>
-                    <a th:href="@{/bill/{id}(id=${bill.id})}"
-                       class="btn btn-outline-secondary">
-                        Cancel — discard changes
-                    </a>
                 </div>
+                <div class="card-body">
 
+                    <div class="row g-2 mb-2 d-none d-md-flex">
+                        <div class="col-md-4"><small class="text-muted fw-semibold">SERVICE NAME *</small></div>
+                        <div class="col-md-4"><small class="text-muted fw-semibold">DESCRIPTION</small></div>
+                        <div class="col-md-3"><small class="text-muted fw-semibold">AMOUNT *</small></div>
+                    </div>
+
+                    <div id="serviceRowsContainer">
+                        <div th:each="svc, iterStat : ${services}"
+                             class="service-row mb-2"
+                             th:id="'serviceRow_' + ${iterStat.index}">
+                            <div class="row g-2 align-items-center">
+                                <div class="col-md-4">
+                                    <input type="text"
+                                           th:name="'services[' + ${iterStat.index} + '].serviceName'"
+                                           class="form-control form-control-sm"
+                                           th:value="${svc.serviceName}"
+                                           placeholder="Service name"
+                                           required/>
+                                </div>
+                                <div class="col-md-4">
+                                    <input type="text"
+                                           th:name="'services[' + ${iterStat.index} + '].description'"
+                                           class="form-control form-control-sm"
+                                           th:value="${svc.description}"
+                                           placeholder="Description (optional)"/>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text">&#8377;</span>
+                                        <input type="number"
+                                               th:name="'services[' + ${iterStat.index} + '].amount'"
+                                               class="form-control form-control-sm amount-input"
+                                               th:value="${svc.amount}"
+                                               min="0" step="0.01"
+                                               oninput="calculateTotal()"
+                                               required/>
+                                    </div>
+                                </div>
+                                <div class="col-md-1 text-center">
+                                    <button type="button"
+                                            class="btn btn-outline-danger btn-sm"
+                                            th:onclick="'removeRow(\'serviceRow_' + ${iterStat.index} + '\')'">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div><!-- /left col -->
+
+        <!-- ══ RIGHT COLUMN ═══════════════════════════════ -->
+        <div class="col-lg-5">
+            <div class="card sticky-top" style="top:80px;overflow-y:auto;max-height:calc(100vh - 100px)">
+                <div class="card-header bg-warning text-dark">
+                    <i class="bi bi-receipt me-2"></i>Updated Summary
+                </div>
+                <div class="card-body">
+
+                    <input type="hidden" id="totalAmountHidden" name="totalAmount" value="0"/>
+
+                    <!-- ── BILL BREAKDOWN TABLE ─────────────────────────
+                         Shows every number the owner needs to verify
+                         on the spot. All values update live as amounts
+                         or additional payment change.
+                    ──────────────────────────────────────────────────── -->
+                    <table class="table table-sm table-borderless mb-0">
+                        <tbody>
+
+                            <!-- Subtotal (raw services sum before discount) -->
+                            <tr>
+                                <td class="text-muted ps-0">Services Subtotal</td>
+                                <td class="text-end pe-0">
+                                    <span id="subtotalDisplay" class="text-dark">&#8377;0.00</span>
+                                </td>
+                            </tr>
+
+                            <!-- Discount row — hidden when discount is 0 -->
+                            <tr id="discountBreakdownRow">
+                                <td class="text-muted ps-0 text-success">
+                                    <i class="bi bi-tag me-1"></i>Discount
+                                </td>
+                                <td class="text-end pe-0 text-success fw-semibold">
+                                    − <span id="discountBreakdownDisplay">&#8377;0.00</span>
+                                </td>
+                            </tr>
+
+                            <!-- Final bill total after discount -->
+                            <tr class="border-top">
+                                <td class="fw-bold ps-0 pt-2">New Total</td>
+                                <td class="text-end pe-0 pt-2">
+                                    <span id="totalAmountDisplay"
+                                          class="fw-bold fs-5 text-primary">&#8377;0.00</span>
+                                </td>
+                            </tr>
+
+                            <!-- Spacer -->
+                            <tr><td colspan="2" class="py-1"></td></tr>
+
+                            <!-- Previously paid (from DB, read-only) -->
+                            <tr>
+                                <td class="text-muted ps-0">
+                                    Previously Paid
+                                    <br/><small class="text-muted" style="font-size:11px">
+                                        (recorded payments)
+                                    </small>
+                                </td>
+                                <td class="text-end pe-0 text-success fw-semibold">
+                                    &#8377;<span id="prevPaidDisplay">0.00</span>
+                                </td>
+                            </tr>
+
+                            <!-- Additional payment being entered now -->
+                            <tr>
+                                <td class="text-muted ps-0">
+                                    Additional Now
+                                    <br/><small class="text-muted" style="font-size:11px">
+                                        (entering right now)
+                                    </small>
+                                </td>
+                                <td class="text-end pe-0 text-success fw-semibold">
+                                    &#8377;<span id="addPayDisplay">0.00</span>
+                                </td>
+                            </tr>
+
+                            <!-- Total paid = prev + additional -->
+                            <tr class="border-top">
+                                <td class="fw-semibold ps-0 pt-2">Total Paid</td>
+                                <td class="text-end pe-0 pt-2 text-success fw-bold">
+                                    &#8377;<span id="totalPaidDisplay">0.00</span>
+                                </td>
+                            </tr>
+
+                        </tbody>
+                    </table>
+
+                    <!-- Balance Due — large, prominent -->
+                    <div class="d-flex justify-content-between align-items-center
+                                mt-2 pt-2 border-top border-2">
+                        <span class="fw-bold fs-6">Balance Due</span>
+                        <span id="balanceDisplay" class="fw-bold fs-4 text-danger">&#8377;0.00</span>
+                    </div>
+
+                    <!-- Status -->
+                    <div class="d-flex justify-content-between align-items-center mt-2 mb-3">
+                        <span class="text-muted small">Payment Status</span>
+                        <span id="statusPreview" class="badge badge-pending">PENDING</span>
+                    </div>
+
+                    <!-- Additional Payment Input Box -->
+                    <div class="border rounded p-2 mb-3 bg-light">
+                        <p class="text-muted small mb-2 fw-semibold">
+                            <i class="bi bi-plus-circle me-1 text-success"></i>
+                            Additional Payment Received Now
+                        </p>
+
+                        <div class="mb-2">
+                            <label class="form-label small mb-1">Amount</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text">&#8377;</span>
+                                <input type="number"
+                                       id="additionalPayment"
+                                       name="initialPayment"
+                                       class="form-control form-control-sm"
+                                       placeholder="0.00"
+                                       min="0"
+                                       step="0.01"
+                                       value="0"
+                                       oninput="calculateTotal()"/>
+                            </div>
+                            <div class="form-text">Enter 0 if no new payment today</div>
+                        </div>
+
+                        <div class="mb-2">
+                            <label class="form-label small mb-1">
+                                Payment Mode
+                                <span class="text-muted">(required if amount &gt; 0)</span>
+                            </label>
+                            <select name="initialPaymentMode"
+                                    id="initialPaymentMode"
+                                    class="form-select form-select-sm">
+                                <option value="">-- Select mode --</option>
+                                <option value="CASH">Cash</option>
+                                <option value="UPI">UPI (PhonePe / GPay / Paytm)</option>
+                                <option value="CARD">Card (Debit / Credit)</option>
+                                <option value="CHEQUE">Cheque</option>
+                                <option value="BANK_TRANSFER">Bank Transfer / NEFT</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="form-label small mb-1">
+                                Transaction Reference <span class="text-muted">(optional)</span>
+                            </label>
+                            <input type="text"
+                                   name="initialPaymentReference"
+                                   class="form-control form-control-sm"
+                                   placeholder="UPI ref / Cheque no. / Transaction ID"/>
+                        </div>
+
+                    </div>
+
+                    <!-- Due Date -->
+                    <div class="mb-3">
+                        <label class="form-label">Due Date</label>
+                        <input type="date" name="dueDate" class="form-control form-control-sm"
+                               th:value="${bill.dueDate}"/>
+                    </div>
+
+                    <!-- Notes -->
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <textarea name="notes" class="form-control form-control-sm"
+                                  rows="2" th:text="${bill.notes}"></textarea>
+                    </div>
+
+                    <hr/>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-warning btn-lg fw-semibold" id="saveChangesBtn">
+                            <i class="bi bi-save me-2"></i>Save Changes
+                        </button>
+                        <a th:href="@{/bill/{id}(id=${bill.id})}" class="btn btn-outline-secondary">
+                            Cancel — discard changes
+                        </a>
+                    </div>
+
+                </div>
             </div>
         </div>
-    </div>
 
-</div>
+    </div>
 </form>
 
-<!--
-    JavaScript: we need to track the existing row count
-    so new rows added via "+ Add Service" get the correct
-    array index (continuing from where the existing ones end).
-
-    th:inline="javascript" lets Thymeleaf inject the Java
-    value ${services.size()} directly into the JS variable.
--->
+<!-- rowIndex for JS new row naming — safe integer inline -->
 <script th:inline="javascript">
 /*<![CDATA[*/
-// Start rowCount from existing service count
-// so new rows get correct indices: services[2], services[3] etc.
-rowCount = /*[[${services != null ? services.size() : 1}]]*/ 1;
-
-document.addEventListener('DOMContentLoaded', function() {
-    calculateTotal();
-    var paidInput = document.getElementById('initialPayment');
-    if (paidInput) {
-        paidInput.addEventListener('input', calculateTotal);
-    }
-});
+var rowIndex = /*[[${services != null ? services.size() : 1}]]*/ 1;
 /*]]>*/
+</script>
+
+<!--
+    ════════════════════════════════════════════════════════════
+    ROOT CAUSE OF THE BUG — bill.js loaded in base.html AFTER
+    this fragment runs. bill.js defines its OWN calculateTotal()
+    which only looks at #initialPayment and #discountAmount —
+    both absent on the edit page — so balance always = full total.
+
+    THE FIX:
+    We redefine calculateTotal() here, at the BOTTOM of this
+    fragment. Because base.html injects bill.js via:
+        <script th:src="@{/js/bill.js}"></script>
+    BEFORE closing </body>, and Thymeleaf inserts th:replace
+    content BEFORE that script tag, the execution order is:
+
+        1. bill.js loads  → defines calculateTotal() (wrong version)
+        2. THIS script runs via window.addEventListener('load')
+           → redefines calculateTotal() with correct edit logic
+           → calls it immediately with correct dbPaidAmount
+
+    We use window.addEventListener('load') not DOMContentLoaded
+    because 'load' fires AFTER all scripts including bill.js,
+    guaranteeing our override wins.
+    ════════════════════════════════════════════════════════════
+-->
+<script>
+window.addEventListener('load', function () {
+
+    // Read server values from hidden inputs — set by Thymeleaf th:value
+    var dbPaidAmount     = parseFloat(document.getElementById('paidAmountData').value)     || 0;
+    var dbDiscountAmount = parseFloat(document.getElementById('discountAmountData').value) || 0;
+    if (dbPaidAmount     < 0) dbPaidAmount     = 0;
+    if (dbDiscountAmount < 0) dbDiscountAmount = 0;
+
+    // ── OVERRIDE calculateTotal ──────────────────────────────
+    // This replaces the bill.js version for the edit page only.
+    // All other pages (create bill etc.) still use bill.js version
+    // because they don't load this fragment.
+    calculateTotal = function () {
+
+        // 1. Sum all service amount inputs
+        var inputs = document.querySelectorAll('.amount-input');
+        var rawServicesSum = 0;
+        inputs.forEach(function (inp) {
+            var v = parseFloat(inp.value) || 0;
+            if (v < 0) v = 0;
+            rawServicesSum += v;
+        });
+
+        // 2. Subtract existing discount (fixed at bill creation)
+        var discount = dbDiscountAmount;
+        if (discount > rawServicesSum) discount = rawServicesSum;
+        var newTotal = rawServicesSum - discount;
+
+        // 3. Previously paid — from DB, never from form input
+        var prevPaid = dbPaidAmount;
+
+        // 4. Additional payment being entered right now
+        var addPayEl = document.getElementById('additionalPayment');
+        var addPay   = parseFloat(addPayEl ? addPayEl.value : 0) || 0;
+        if (addPay < 0) addPay = 0;
+
+        // 5. Total paid = prev + additional, capped at newTotal
+        var totalPaid = prevPaid + addPay;
+        if (totalPaid > newTotal) {
+            totalPaid = newTotal;
+            addPay    = newTotal - prevPaid;
+            if (addPay < 0) addPay = 0;
+            if (addPayEl) addPayEl.value = addPay.toFixed(2);
+        }
+
+        // 6. Balance
+        var balance = newTotal - totalPaid;
+        if (balance < 0) balance = 0;
+
+        // 7. Status
+        var status;
+        if (newTotal > 0 && balance === 0)     status = 'PAID';
+        else if (totalPaid > 0 && balance > 0) status = 'PARTIAL';
+        else                                    status = 'PENDING';
+
+        // 8. Update all display elements
+
+        // Services subtotal (before discount)
+        var subtotalEl = document.getElementById('subtotalDisplay');
+        if (subtotalEl) subtotalEl.textContent = '\u20B9' + rawServicesSum.toFixed(2);
+
+        // Discount row — show only when discount > 0
+        var discountRow = document.getElementById('discountBreakdownRow');
+        var discountDisp = document.getElementById('discountBreakdownDisplay');
+        if (discountRow) discountRow.style.display = discount > 0 ? '' : 'none';
+        if (discountDisp) discountDisp.textContent = '\u20B9' + discount.toFixed(2);
+
+        // New total (after discount)
+        var totalDisp = document.getElementById('totalAmountDisplay');
+        if (totalDisp) totalDisp.textContent = '\u20B9' + newTotal.toFixed(2);
+
+        // Hidden total for form submission
+        var totalHid = document.getElementById('totalAmountHidden');
+        if (totalHid) totalHid.value = newTotal.toFixed(2);
+
+        // Previously paid
+        var prevPaidEl = document.getElementById('prevPaidDisplay');
+        if (prevPaidEl) prevPaidEl.textContent = prevPaid.toFixed(2);
+
+        // Additional now
+        var addPayEl2 = document.getElementById('addPayDisplay');
+        if (addPayEl2) addPayEl2.textContent = addPay.toFixed(2);
+
+        // Total paid
+        var totalPaidEl = document.getElementById('totalPaidDisplay');
+        if (totalPaidEl) totalPaidEl.textContent = totalPaid.toFixed(2);
+
+        // Balance due
+        var balEl = document.getElementById('balanceDisplay');
+        if (balEl) {
+            balEl.textContent = '\u20B9' + balance.toFixed(2);
+            balEl.className   = balance === 0
+                ? 'fw-bold fs-4 text-success'
+                : 'fw-bold fs-4 text-danger';
+        }
+
+        // Status badge
+        var statusEl = document.getElementById('statusPreview');
+        if (statusEl) {
+            statusEl.textContent = status;
+            statusEl.className   = 'badge fs-6 badge-' + status.toLowerCase();
+        }
+    };
+
+    // ── OVERRIDE addServiceRow for edit page ─────────────────
+    // bill.js uses rowCount starting from 1 — this causes index
+    // collisions with existing Thymeleaf-rendered rows (0, 1...).
+    // We override with rowIndex set by Thymeleaf to services.size().
+    addServiceRow = function () {
+        var container = document.getElementById('serviceRowsContainer');
+        if (!container) return;
+
+        var idx = rowIndex;
+
+        var html =
+            '<div class="service-row mb-2" id="serviceRow_' + idx + '">' +
+                '<div class="row g-2 align-items-center">' +
+                    '<div class="col-md-4">' +
+                        '<input type="text"' +
+                               ' name="services[' + idx + '].serviceName"' +
+                               ' class="form-control form-control-sm"' +
+                               ' placeholder="Service name" required/>' +
+                    '</div>' +
+                    '<div class="col-md-4">' +
+                        '<input type="text"' +
+                               ' name="services[' + idx + '].description"' +
+                               ' class="form-control form-control-sm"' +
+                               ' placeholder="Description (optional)"/>' +
+                    '</div>' +
+                    '<div class="col-md-3">' +
+                        '<div class="input-group input-group-sm">' +
+                            '<span class="input-group-text">&#8377;</span>' +
+                            '<input type="number"' +
+                                   ' name="services[' + idx + '].amount"' +
+                                   ' class="form-control form-control-sm amount-input"' +
+                                   ' placeholder="0.00" min="0" step="0.01"' +
+                                   ' oninput="calculateTotal()" required/>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="col-md-1 text-center">' +
+                        '<button type="button" class="btn btn-outline-danger btn-sm"' +
+                                ' onclick="removeRow(\'serviceRow_' + idx + '\')">' +
+                            '<i class="bi bi-trash"></i>' +
+                        '</button>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+
+        container.insertAdjacentHTML('beforeend', html);
+        rowIndex++;
+
+        // disable delete btn if only one row
+        var allRows = container.querySelectorAll('.service-row');
+        var btns    = container.querySelectorAll('.service-row .btn-outline-danger');
+        btns.forEach(function (btn) { btn.disabled = (allRows.length === 1); });
+
+        var newRow = document.getElementById('serviceRow_' + (rowIndex - 1));
+        if (newRow) {
+            var nameInput = newRow.querySelector('input[type="text"]');
+            if (nameInput) nameInput.focus();
+        }
+
+        calculateTotal();
+    };
+
+    // Run the correct calculateTotal immediately on page load
+    calculateTotal();
+});
+
+// validateEditForm stays here — not in bill.js so no conflict
+function validateEditForm() {
+    var serviceNames = document.querySelectorAll('[name$=".serviceName"]');
+    var hasService   = false;
+    serviceNames.forEach(function (inp) {
+        if (inp.value.trim() !== '') hasService = true;
+    });
+    if (!hasService) {
+        alert('Please add at least one service before saving.');
+        return false;
+    }
+
+    var addPay = parseFloat(document.getElementById('additionalPayment').value) || 0;
+    if (addPay > 0) {
+        var modeSelect = document.getElementById('initialPaymentMode');
+        if (!modeSelect || !modeSelect.value) {
+            alert('Please select a payment mode for the additional payment.');
+            if (modeSelect) modeSelect.focus();
+            return false;
+        }
+    }
+
+    var btn = document.getElementById('saveChangesBtn');
+    if (btn) {
+        btn.disabled  = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
+    }
+    return true;
+}
 </script>
 
 </th:block>

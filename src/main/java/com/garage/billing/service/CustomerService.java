@@ -11,31 +11,25 @@ import java.util.List;
 import java.util.Optional;
 
 // @Service = marks this as a Spring service bean
-// Functionally identical to @Component, but communicates intent:
-// "this class contains business logic"
 @Service
 public class CustomerService {
 
-    // Spring injects both repositories automatically
     @Autowired
     private CustomerRepository customerRepository;
 
     @Autowired
     private CarRepository carRepository;
 
-    // Business rule: if customer exists (same phone), return existing one
-    // If not, create and return new customer
-    // This is called "find or create" pattern
+    // Find existing customer by phone or create new one
     public Customer findOrCreate(String name, String phone, String email) {
 
         Optional<Customer> existing =
                 customerRepository.findByPhone(phone);
 
         if (existing.isPresent()) {
-            return existing.get(); // customer already in DB, reuse
+            return existing.get();
         }
 
-        // New customer — build and save
         Customer newCustomer = Customer.builder()
                 .name(name)
                 .phone(phone)
@@ -69,6 +63,16 @@ public class CustomerService {
         }
 
         return customerRepository.searchByName(name);
+    }
+
+    // SEARCH CUSTOMERS BY NAME OR PHONE
+    public List<Customer> searchByNameOrPhone(String query) {
+
+        if (query == null || query.trim().isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+
+        return customerRepository.searchByNameOrPhone(query);
     }
 
     // Get all cars belonging to a customer

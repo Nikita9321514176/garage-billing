@@ -1,272 +1,369 @@
-// bill.js — GarageBilling dynamic form engine
-// Tracks how many rows have been created (never decrements,
-// so each row always gets a unique index even after removals)
+// =====================================================
+// Garage Billing System - bill.js
+// =====================================================
+
 var rowCount = 1;
 
-// ── addServiceRow ────────────────────────────────────────────
-// Called by the "+ Add Service" button (type="button", NOT submit)
+// =====================================================
+// ADD SERVICE ROW
+// =====================================================
 function addServiceRow() {
+
     var container = document.getElementById('serviceRowsContainer');
+
     if (!container) {
         console.error('serviceRowsContainer not found');
         return;
     }
 
-    var idx = rowCount; // capture current value for this row's names
-    rowCount++;
+    var index = rowCount++;
 
-    var div = document.createElement('div');
-    div.className = 'service-row';
-    div.id = 'serviceRow_' + idx;
+    var row = document.createElement('div');
 
-    // Build the inner HTML using string concatenation (no template literals
-    // to avoid any browser compatibility issues)
-    div.innerHTML =
+    row.className = 'service-row mt-2';
+    row.id = 'serviceRow_' + index;
+
+    row.innerHTML =
         '<div class="row g-2 align-items-center">' +
+
             '<div class="col-md-4">' +
                 '<input type="text"' +
-                '       name="services[' + idx + '].serviceName"' +
-                '       class="form-control form-control-sm"' +
-                '       placeholder="e.g. Tyre Rotation"' +
-                '       required />' +
+                ' name="services[' + index + '].serviceName"' +
+                ' class="form-control form-control-sm"' +
+                ' placeholder="Service Name"' +
+                ' required>' +
             '</div>' +
+
             '<div class="col-md-4">' +
                 '<input type="text"' +
-                '       name="services[' + idx + '].description"' +
-                '       class="form-control form-control-sm"' +
-                '       placeholder="Description (optional)" />' +
+                ' name="services[' + index + '].description"' +
+                ' class="form-control form-control-sm"' +
+                ' placeholder="Description">' +
             '</div>' +
+
             '<div class="col-md-3">' +
                 '<div class="input-group input-group-sm">' +
-                    '<span class="input-group-text">&#8377;</span>' +
+                    '<span class="input-group-text">₹</span>' +
+
                     '<input type="number"' +
-                    '       name="services[' + idx + '].amount"' +
-                    '       class="form-control form-control-sm amount-input"' +
-                    '       placeholder="0.00"' +
-                    '       min="0"' +
-                    '       step="0.01"' +
-                    '       oninput="calculateTotal()" />' +
+                    ' name="services[' + index + '].amount"' +
+                    ' class="form-control amount-input"' +
+                    ' min="0"' +
+                    ' step="0.01"' +
+                    ' value="0"' +
+                    ' oninput="calculateTotal()">' +
                 '</div>' +
             '</div>' +
+
             '<div class="col-md-1 text-center">' +
                 '<button type="button"' +
-                '        class="btn btn-outline-danger btn-sm"' +
-                '        onclick="removeRow(\'serviceRow_' + idx + '\')"' +
-                '        title="Remove service">' +
-                    '<i class="bi bi-trash"></i>' +
+                ' class="btn btn-outline-danger btn-sm"' +
+                ' onclick="removeRow(\'serviceRow_' + index + '\')">' +
+                '<i class="bi bi-trash"></i>' +
                 '</button>' +
             '</div>' +
+
         '</div>';
 
-    container.appendChild(div);
-    calculateTotal();
+    container.appendChild(row);
 
-    // Focus the service name field in the new row
-    var nameInput = div.querySelector('input[type="text"]');
-    if (nameInput) nameInput.focus();
+    calculateTotal();
 }
 
-// ── removeRow ────────────────────────────────────────────────
+// =====================================================
+// REMOVE SERVICE ROW
+// =====================================================
 function removeRow(rowId) {
+
     var container = document.getElementById('serviceRowsContainer');
+
     if (!container) return;
 
     var rows = container.querySelectorAll('.service-row');
+
     if (rows.length <= 1) {
-        // Flash red border to signal "can't remove last row"
-        var row = document.getElementById(rowId);
-        if (row) {
-            row.style.borderColor = '#dc3545';
-            row.style.borderWidth = '1.5px';
-            setTimeout(function() {
-                row.style.borderColor = '';
-                row.style.borderWidth = '';
-            }, 800);
-        }
+        alert('At least one service is required.');
         return;
     }
 
-    var rowEl = document.getElementById(rowId);
-    if (rowEl) {
-        rowEl.remove();
-        calculateTotal();
+    var row = document.getElementById(rowId);
+
+    if (row) {
+        row.remove();
     }
+
+    calculateTotal();
 }
 
-// ── calculateTotal ───────────────────────────────────────────
-// Reads every .amount-input field, sums them, updates display
+// =====================================================
+// CALCULATE BILL
+// =====================================================
 function calculateTotal() {
-    // Sum all service amounts — this is the subtotal
-    var inputs = document.querySelectorAll('.amount-input');
+
     var subtotal = 0;
-    for (var i = 0; i < inputs.length; i++) {
-        var val = parseFloat(inputs[i].value);
-        if (!isNaN(val) && val > 0) subtotal += val;
-    }
-    subtotal = Math.round(subtotal * 100) / 100;
 
-    // Read discount
-    var discountInput = document.getElementById('discountAmount');
-    var discount = discountInput
-        ? (parseFloat(discountInput.value) || 0) : 0;
-    discount = Math.round(discount * 100) / 100;
+    document.querySelectorAll('.amount-input').forEach(function(input) {
 
-    // Safety: discount cannot exceed subtotal
+        var value = parseFloat(input.value);
+
+        if (!isNaN(value)) {
+            subtotal += value;
+        }
+    });
+
+    subtotal = round2(subtotal);
+
+    // -------------------------
+    // Discount
+    // -------------------------
+
+    var discountField =
+        document.getElementById('discountAmount');
+
+    var discount =
+        discountField
+        ? parseFloat(discountField.value) || 0
+        : 0;
+
     if (discount > subtotal) {
         discount = subtotal;
-        if (discountInput) discountInput.value = discount.toFixed(2);
     }
 
-    // Final total = subtotal - discount
-    var finalTotal = Math.round((subtotal - discount) * 100) / 100;
+    // -------------------------
+    // Grand Total
+    // -------------------------
 
-    // Update subtotal display
-    var subtotalDisplay = document.getElementById('subtotalDisplay');
-    if (subtotalDisplay) {
-        subtotalDisplay.textContent = '\u20B9' + formatNum(subtotal.toFixed(2));
+    var grandTotal =
+        round2(subtotal - discount);
+
+    // -------------------------
+    // Payment Received
+    // -------------------------
+
+    var paymentInput =
+        document.getElementById('initialPayment');
+
+    var payment =
+        paymentInput
+        ? parseFloat(paymentInput.value) || 0
+        : 0;
+
+    // -------------------------
+    // Balance
+    // -------------------------
+
+    var balance =
+        round2(grandTotal - payment);
+
+    if (balance < 0) {
+        balance = 0;
     }
 
-    // Show/hide discount row
-    var discountRow = document.getElementById('discountRow');
+    // -------------------------
+    // Update UI
+    // -------------------------
+
+    setText(
+        'subtotalDisplay',
+        '₹' + formatCurrency(subtotal)
+    );
+
+    setText(
+        'discountDisplay',
+        '- ₹' + formatCurrency(discount)
+    );
+
+    setText(
+        'totalAmountDisplay',
+        '₹' + formatCurrency(grandTotal)
+    );
+
+    setText(
+        'balanceDisplay',
+        '₹' + formatCurrency(balance)
+    );
+
+    var hidden =
+        document.getElementById('totalAmountHidden');
+
+    if (hidden) {
+        hidden.value = grandTotal.toFixed(2);
+    }
+
+    // -------------------------
+    // Show / Hide Discount Row
+    // -------------------------
+
+    var discountRow =
+        document.getElementById('discountRow');
+
     if (discountRow) {
-        discountRow.style.display = discount > 0 ? 'flex' : 'none';
-    }
-    var discountDisplay = document.getElementById('discountDisplay');
-    if (discountDisplay) {
-        discountDisplay.textContent = '- \u20B9' + formatNum(discount.toFixed(2));
-    }
 
-    // Update total display
-    var display = document.getElementById('totalAmountDisplay');
-    if (display) {
-        display.textContent = '\u20B9' + formatNum(finalTotal.toFixed(2));
-    }
-    var hidden = document.getElementById('totalAmountHidden');
-    if (hidden) hidden.value = finalTotal.toFixed(2);
-
-    updateBalance(finalTotal);
-}
-
-    // Round to 2 decimal places to avoid float artifacts
-    total = Math.round(total * 100) / 100;
-
-    // Update total display
-    var display = document.getElementById('totalAmountDisplay');
-    if (display) {
-        display.textContent = '\u20B9' + formatNum(total.toFixed(2));
-    }
-
-    // Update hidden input (submitted with form)
-    var hidden = document.getElementById('totalAmountHidden');
-    if (hidden) hidden.value = total.toFixed(2);
-
-    updateBalance(total);
-}
-
-// ── updateBalance ────────────────────────────────────────────
-function updateBalance(total) {
-    var paidEl = document.getElementById('initialPayment');
-    var paid   = paidEl ? (parseFloat(paidEl.value) || 0) : 0;
-    var bal    = Math.max(0, total - paid);
-    bal        = Math.round(bal * 100) / 100;
-
-    var balDisplay = document.getElementById('balanceDisplay');
-    if (balDisplay) {
-        balDisplay.textContent = '\u20B9' + formatNum(bal.toFixed(2));
-        // Red when balance > 0, green when fully paid
-        balDisplay.style.color = bal > 0 ? '#dc3545' : '#198754';
-    }
-
-    // Update status preview badge
-    var badge = document.getElementById('statusPreview');
-    if (badge) {
-        if (paid <= 0 || total === 0) {
-            badge.textContent  = 'PENDING';
-            badge.className    = 'badge badge-pending';
-        } else if (paid >= total) {
-            badge.textContent  = 'PAID';
-            badge.className    = 'badge badge-paid';
+        if (discount > 0) {
+            discountRow.style.display = 'flex';
         } else {
-            badge.textContent  = 'PARTIAL';
-            badge.className    = 'badge badge-partial';
+            discountRow.style.display = 'none';
         }
     }
+
+    updatePaymentStatus(
+        grandTotal,
+        payment,
+        balance
+    );
 }
 
-// ── formatNum ────────────────────────────────────────────────
-// "15000.50" → "15,000.50"
-function formatNum(numStr) {
-    var parts  = numStr.split('.');
-    parts[0]   = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-    return parts.join('.');
-}
+// =====================================================
+// PAYMENT STATUS
+// =====================================================
+function updatePaymentStatus(
+    grandTotal,
+    payment,
+    balance
+) {
 
-// ── loadCarsForCustomer ──────────────────────────────────────
-// Called when customer dropdown changes — fetches their cars via AJAX
-function loadCarsForCustomer(customerId) {
-    var carSelect = document.getElementById('existingCarId');
-    if (!carSelect) return;
+    var badge =
+        document.getElementById('statusPreview');
 
-    if (!customerId || customerId === '' || customerId === '0') {
-        carSelect.innerHTML =
-            '<option value="">-- Select or add new --</option>' +
-            '<option value="0">+ Register new car</option>';
+    if (!badge) return;
+
+    if (grandTotal === 0) {
+
+        badge.innerText = 'PENDING';
+        badge.className = 'badge bg-secondary';
+
         return;
     }
 
-    carSelect.innerHTML = '<option value="">Loading cars...</option>';
-    carSelect.disabled  = true;
+    if (balance === 0) {
+
+        badge.innerText = 'PAID';
+        badge.className = 'badge bg-success';
+
+        return;
+    }
+
+    if (payment > 0) {
+
+        badge.innerText = 'PARTIAL';
+        badge.className = 'badge bg-warning text-dark';
+
+        return;
+    }
+
+    badge.innerText = 'PENDING';
+    badge.className = 'badge bg-danger';
+}
+
+// =====================================================
+// CUSTOMER -> LOAD CARS
+// =====================================================
+function loadCarsForCustomer(customerId) {
+
+    var carSelect =
+        document.getElementById('existingCarId');
+
+    if (!carSelect) return;
+
+    if (!customerId) {
+
+        carSelect.innerHTML =
+            '<option value="">-- Select Car --</option>' +
+            '<option value="0">+ Register new car</option>';
+
+        return;
+    }
 
     fetch('/bill/cars?customerId=' + customerId)
-        .then(function(response) {
-            if (!response.ok) {
-                throw new Error('HTTP ' + response.status);
-            }
-            return response.json();
-        })
-        .then(function(cars) {
-            carSelect.disabled = false;
 
-            var html = '<option value="">-- Select Car --</option>';
+        .then(response => response.json())
 
-            if (cars.length === 0) {
-                html += '<option value="" disabled>' +
-                        'No cars found for this customer</option>';
-            } else {
-                for (var i = 0; i < cars.length; i++) {
-                    html += '<option value="' + cars[i].id + '">' +
-                            cars[i].carNumber + ' \u2014 ' +
-                            cars[i].carModel  +
-                            '</option>';
-                }
-            }
+        .then(cars => {
 
-            html += '<option value="0">+ Register new car</option>';
-            carSelect.innerHTML = html;
+            var html =
+                '<option value="">-- Select Car --</option>';
 
-            // If a car was pre-selected via URL param, select it now
-            if (preselectedCarId) {
-                carSelect.value = String(preselectedCarId);
-                handleCarChange(String(preselectedCarId));
-            }
-        })
-        .catch(function(err) {
-            carSelect.disabled  = false;
-            carSelect.innerHTML =
-                '<option value="">Error — please retry</option>' +
+            cars.forEach(function(car) {
+
+                html +=
+                    '<option value="' + car.id + '">' +
+                    car.carNumber +
+                    ' - ' +
+                    car.carModel +
+                    '</option>';
+            });
+
+            html +=
                 '<option value="0">+ Register new car</option>';
-            console.error('loadCarsForCustomer failed:', err);
+
+            carSelect.innerHTML = html;
+        })
+
+        .catch(error => {
+
+            console.error(
+                'Failed loading cars:',
+                error
+            );
         });
 }
 
-// ── Page init ────────────────────────────────────────────────
-// DOMContentLoaded runs after HTML parsed, before images load
-document.addEventListener('DOMContentLoaded', function() {
-    calculateTotal();
+// =====================================================
+// HELPERS
+// =====================================================
+function round2(value) {
+    return Math.round(value * 100) / 100;
+}
 
-    // Wire payment input to recalculate balance on every keystroke
-    var payInput = document.getElementById('initialPayment');
-    if (payInput) {
-        payInput.addEventListener('input', calculateTotal);
+function formatCurrency(value) {
+
+    return Number(value).toLocaleString(
+        'en-IN',
+        {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        }
+    );
+}
+
+function setText(id, value) {
+
+    var el = document.getElementById(id);
+
+    if (el) {
+        el.textContent = value;
     }
-});
+}
+
+// =====================================================
+// PAGE LOAD
+// =====================================================
+document.addEventListener(
+    'DOMContentLoaded',
+    function () {
+
+        calculateTotal();
+
+        var paymentInput =
+            document.getElementById('initialPayment');
+
+        if (paymentInput) {
+
+            paymentInput.addEventListener(
+                'input',
+                calculateTotal
+            );
+        }
+
+        var discountInput =
+            document.getElementById('discountAmount');
+
+        if (discountInput) {
+
+            discountInput.addEventListener(
+                'input',
+                calculateTotal
+            );
+        }
+    }
+);

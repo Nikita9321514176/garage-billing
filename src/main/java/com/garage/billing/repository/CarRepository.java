@@ -12,8 +12,6 @@ import org.springframework.stereotype.Repository;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.sql.Timestamp;
-import java.sql.SQLException;
-
 import java.util.List;
 import java.util.Optional;
 
@@ -23,10 +21,6 @@ public class CarRepository {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
-    // ─────────────────────────────────────────────────────────
-    // ROW MAPPER
-    // Converts one database row into one Car object
-    // ─────────────────────────────────────────────────────────
     private static final RowMapper<Car> CAR_MAPPER = (rs, rowNum) -> {
 
         Car car = new Car();
@@ -38,7 +32,6 @@ public class CarRepository {
         car.setBrand(rs.getString("brand"));
         car.setColor(rs.getString("color"));
 
-        // manufacture_year can be NULL
         int year = rs.getInt("manufacture_year");
 
         if (rs.wasNull()) {
@@ -53,18 +46,15 @@ public class CarRepository {
             car.setCreatedAt(ts.toLocalDateTime());
         }
 
-        // customer_name exists only in JOIN queries
         try {
             car.setCustomerName(rs.getString("customer_name"));
-        } catch (SQLException ignored) {
+        } catch (Exception ignored) {
         }
 
         return car;
     };
 
-    // ─────────────────────────────────────────────────────────
     // SAVE NEW CAR
-    // ─────────────────────────────────────────────────────────
     public Long save(Car car) {
 
         String sql = """
@@ -91,10 +81,7 @@ public class CarRepository {
             ps.setString(2, car.getCarNumber());
             ps.setString(3, car.getCarModel());
             ps.setString(4, car.getBrand());
-
-            // Handles NULL safely
             ps.setObject(5, car.getManufactureYear());
-
             ps.setString(6, car.getColor());
 
             return ps;
@@ -104,13 +91,10 @@ public class CarRepository {
         return keyHolder.getKey().longValue();
     }
 
-    // ─────────────────────────────────────────────────────────
     // FIND CAR BY ID
-    // ─────────────────────────────────────────────────────────
     public Optional<Car> findById(Long id) {
 
-        String sql =
-                "SELECT * FROM cars WHERE id = ?";
+        String sql = "SELECT * FROM cars WHERE id = ?";
 
         List<Car> results =
                 jdbcTemplate.query(sql, CAR_MAPPER, id);
@@ -118,9 +102,7 @@ public class CarRepository {
         return results.stream().findFirst();
     }
 
-    // ─────────────────────────────────────────────────────────
     // FIND CAR BY NUMBER
-    // ─────────────────────────────────────────────────────────
     public Optional<Car> findByCarNumber(String carNumber) {
 
         String sql = """
@@ -137,27 +119,31 @@ public class CarRepository {
         return results.stream().findFirst();
     }
 
-    // ─────────────────────────────────────────────────────────
-    // GET ALL CARS FOR ONE CUSTOMER
-    // ─────────────────────────────────────────────────────────
+    // GET ALL CARS FOR CUSTOMER
     public List<Car> findByCustomerId(Long customerId) {
 
         String sql =
                 "SELECT * FROM cars WHERE customer_id = ? ORDER BY created_at DESC";
 
-        return jdbcTemplate.query(sql, CAR_MAPPER, customerId);
+        return jdbcTemplate.query(
+                sql,
+                CAR_MAPPER,
+                customerId
+        );
     }
 
-    // ─────────────────────────────────────────────────────────
     // CHECK IF CAR NUMBER EXISTS
-    // ─────────────────────────────────────────────────────────
     public boolean existsByCarNumber(String carNumber) {
 
         String sql =
                 "SELECT COUNT(*) FROM cars WHERE car_number = ?";
 
         Integer count =
-                jdbcTemplate.queryForObject(sql, Integer.class, carNumber);
+                jdbcTemplate.queryForObject(
+                        sql,
+                        Integer.class,
+                        carNumber
+                );
 
         return count != null && count > 0;
     }

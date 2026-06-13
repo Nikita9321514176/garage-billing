@@ -2,10 +2,10 @@ package com.garage.billing.model;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.util.AutoPopulatingList;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.ArrayList;
 
 // BillForm is a DTO — Data Transfer Object.
 // It is NOT stored in the database directly.
@@ -64,19 +64,32 @@ public class BillForm {
     private String notes;
 
     // ── SERVICE LINES ─────────────────────────────────────────
-    // This is the key field. When the form sends:
-    //   services[0].serviceName=Oil Change
-    //   services[0].amount=800
-    //   services[1].serviceName=Tyre Rotation
-    //   services[1].amount=300
-    // Spring automatically populates this list with ServiceLine objects.
+    // FIX: Replaced plain ArrayList with Spring's AutoPopulatingList.
     //
-    // We initialize with an empty ArrayList to prevent NullPointerException
-    // if the form somehow sends zero services.
-    private List<ServiceLine> services = new ArrayList<>();
+    // ROOT CAUSE OF BUG 2 (services merging):
+    //   Plain ArrayList has a fixed size equal to however many items
+    //   were pre-populated (e.g. 2 existing services from DB).
+    //   When the edit form dynamically adds new rows via JavaScript,
+    //   those rows submit as services[2], services[3], etc.
+    //   Spring MVC calls list.set(2, value) on a size-2 list
+    //   → IndexOutOfBoundsException → Spring silently drops those
+    //   entries OR concatenates them into the previous field,
+    //   producing "alignment,denting" as a single service name.
+    //
+    // FIX: AutoPopulatingList is a Spring-native class (spring-core,
+    //   already in your classpath — no new dependency needed).
+    //   It auto-grows to ANY index Spring tries to access.
+    //   services[0], services[1], services[2], services[3] all bind
+    //   correctly regardless of how many rows were pre-populated.
+    private List<ServiceLine> services =
+            new AutoPopulatingList<>(ServiceLine.class);
 
     // ── INNER CLASS: ServiceLine ──────────────────────────────
     // Represents ONE row in the services table on the bill form.
+    // Must have a public no-arg constructor for AutoPopulatingList
+    // to instantiate new ServiceLine objects when auto-growing.
+    // @NoArgsConstructor on the outer class does NOT cover inner
+    // static classes — the explicit no-arg constructor below is required.
     @Data
     @NoArgsConstructor
     public static class ServiceLine {
