@@ -106,12 +106,23 @@ public class BillRepository {
  
         item.setAmount(rs.getBigDecimal("amount"));
  
-        // NEW: read item_type (PART or LABOUR), safe fallback
         try {
             String type = rs.getString("item_type");
             item.setItemType(type != null ? type : "LABOUR");
         } catch (Exception e) {
             item.setItemType("LABOUR");
+        }
+ 
+        // NEW: qty and unit_price — both nullable, only set for PART rows.
+        // getBigDecimal() naturally returns null for SQL NULL, no
+        // wasNull() check needed (unlike primitive int/getInt()).
+        try {
+            item.setQty(rs.getBigDecimal("qty"));
+            item.setUnitPrice(rs.getBigDecimal("unit_price"));
+        } catch (Exception e) {
+            // Columns missing in an old DB snapshot — safe fallback
+            item.setQty(null);
+            item.setUnitPrice(null);
         }
  
         item.setSortOrder(rs.getInt("sort_order"));
@@ -199,9 +210,11 @@ public class BillRepository {
              description,
              amount,
              item_type,
+             qty,
+             unit_price,
              sort_order
          )
-         VALUES (?, ?, ?, ?, ?, ?)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
          """;
 
      jdbcTemplate.update(
@@ -210,12 +223,14 @@ public class BillRepository {
              item.getServiceName(),
              item.getDescription(),
              item.getAmount(),
-             // NEW: item_type — defaults to LABOUR if null
              item.getItemType() != null ? item.getItemType() : "LABOUR",
+             // NEW: qty and unit_price — null for LABOUR rows,
+             // setObject() handles null safely as SQL NULL
+             item.getQty(),
+             item.getUnitPrice(),
              item.getSortOrder()
      );
  }
-
     // ─────────────────────────────────────────────────────────
     // DELETE SERVICES BY BILL ID
     // ─────────────────────────────────────────────────────────

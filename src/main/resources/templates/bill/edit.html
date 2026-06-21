@@ -15,7 +15,7 @@
 
 <div class="alert alert-info mb-4">
     <i class="bi bi-info-circle me-2"></i>
-    <strong>What you can edit:</strong> services, amounts, due date, notes, payment received.
+    <strong>What you can edit:</strong> services, parts, amounts, due date, notes, payment received.
     <br>
     <strong>What cannot be changed:</strong> bill number, customer, and car
     (changing these would corrupt payment history).
@@ -25,10 +25,6 @@
       method="post" id="billForm"
       onsubmit="return validateEditForm()">
 
-    <!--
-        Hidden inputs carry server values safely into JS.
-        Placed at top of form so they exist in DOM immediately.
-    -->
     <input type="hidden" id="paidAmountData"
            th:value="${bill.paidAmount != null ? bill.paidAmount : 0}"/>
     <input type="hidden" id="discountAmountData"
@@ -62,10 +58,10 @@
                 </div>
             </div>
 
-            <!-- Editable services -->
-            <div class="card">
+            <!-- Editable services (LABOUR) -->
+            <div class="card mb-3">
                 <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
-                    <span><i class="bi bi-tools me-2"></i>Edit Services</span>
+                    <span><i class="bi bi-tools me-2"></i>Edit Services (Labour)</span>
                     <button type="button" class="btn btn-sm btn-dark" onclick="addServiceRow()">
                         <i class="bi bi-plus-lg me-1"></i>Add Service
                     </button>
@@ -79,7 +75,7 @@
                     </div>
 
                     <div id="serviceRowsContainer">
-                        <div th:each="svc, iterStat : ${services}"
+                        <div th:each="svc, iterStat : ${labourItems}"
                              class="service-row mb-2"
                              th:id="'serviceRow_' + ${iterStat.index}">
                             <div class="row g-2 align-items-center">
@@ -124,6 +120,83 @@
                 </div>
             </div>
 
+            <!-- ── PARTS USED CARD ───────────────────────────── -->
+            <div class="card">
+                <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-gear-wide-connected me-2"></i>Parts Used</span>
+                    <button type="button" class="btn btn-sm btn-light" onclick="addPartRow()">
+                        <i class="bi bi-plus-lg me-1"></i>Add Part
+                    </button>
+                </div>
+                <div class="card-body">
+
+                    <div class="row g-2 mb-2 d-none d-md-flex">
+                        <div class="col-md-4"><small class="text-muted fw-semibold">PART NAME *</small></div>
+                        <div class="col-md-2"><small class="text-muted fw-semibold">QTY *</small></div>
+                        <div class="col-md-3"><small class="text-muted fw-semibold">UNIT PRICE *</small></div>
+                        <div class="col-md-2"><small class="text-muted fw-semibold">AMOUNT</small></div>
+                    </div>
+
+                    <div id="partRowsContainer">
+                        <div th:each="part, iterStat : ${partItems}"
+                             class="part-row mb-2"
+                             th:id="'partRow_' + ${iterStat.index}">
+                            <div class="row g-2 align-items-center">
+                                <div class="col-md-4">
+                                    <input type="text"
+                                           th:name="'parts[' + ${iterStat.index} + '].partName'"
+                                           class="form-control form-control-sm"
+                                           th:value="${part.serviceName}"
+                                           placeholder="Part name"/>
+                                </div>
+                                <div class="col-md-2">
+                                    <input type="number"
+                                           th:name="'parts[' + ${iterStat.index} + '].qty'"
+                                           class="form-control form-control-sm part-qty-input"
+                                           th:value="${part.qty}"
+                                           min="0" step="1"
+                                           oninput="calculatePartAmount(this.closest('.part-row').id); calculateTotal();"/>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text">&#8377;</span>
+                                        <input type="number"
+                                               th:name="'parts[' + ${iterStat.index} + '].unitPrice'"
+                                               class="form-control form-control-sm part-price-input"
+                                               th:value="${part.unitPrice}"
+                                               min="0" step="0.01"
+                                               oninput="calculatePartAmount(this.closest('.part-row').id); calculateTotal();"/>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text">&#8377;</span>
+                                        <input type="text"
+                                               class="form-control form-control-sm part-amount-display"
+                                               th:value="${part.amount != null ? #numbers.formatDecimal(part.amount, 1, 'POINT', 2, 'POINT') : '0.00'}"
+                                               readonly style="background:#f8f9fa"/>
+                                    </div>
+                                </div>
+                                <div class="col-md-1 text-center">
+                                    <button type="button"
+                                            class="btn btn-outline-danger btn-sm"
+                                            th:onclick="'removePartRow(\'partRow_' + ${iterStat.index} + '\')'">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <p id="noPartsMessage" class="text-muted small mb-0 mt-1"
+                       th:style="${partItems != null and !partItems.isEmpty()} ? 'display:none' : 'display:block'">
+                        <i class="bi bi-info-circle me-1"></i>No parts added. Click "Add Part" if any parts were used.
+                    </p>
+
+                </div>
+            </div>
+            <!-- /PARTS USED CARD -->
+
         </div><!-- /left col -->
 
         <!-- ══ RIGHT COLUMN ═══════════════════════════════ -->
@@ -136,15 +209,22 @@
 
                     <input type="hidden" id="totalAmountHidden" name="totalAmount" value="0"/>
 
-                    <!-- ── BILL BREAKDOWN TABLE ─────────────────────────
-                         Shows every number the owner needs to verify
-                         on the spot. All values update live as amounts
-                         or additional payment change.
-                    ──────────────────────────────────────────────────── -->
                     <table class="table table-sm table-borderless mb-0">
                         <tbody>
 
-                            <!-- Subtotal (raw services sum before discount) -->
+                            <tr>
+                                <td class="text-muted ps-0 small">Labour Total</td>
+                                <td class="text-end pe-0 small">
+                                    <span id="labourTotalDisplay">&#8377;0.00</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted ps-0 small">Parts Total</td>
+                                <td class="text-end pe-0 small">
+                                    <span id="partsTotalDisplay">&#8377;0.00</span>
+                                </td>
+                            </tr>
+
                             <tr>
                                 <td class="text-muted ps-0">Services Subtotal</td>
                                 <td class="text-end pe-0">
@@ -152,7 +232,6 @@
                                 </td>
                             </tr>
 
-                            <!-- Discount row — hidden when discount is 0 -->
                             <tr id="discountBreakdownRow">
                                 <td class="text-muted ps-0 text-success">
                                     <i class="bi bi-tag me-1"></i>Discount
@@ -162,7 +241,6 @@
                                 </td>
                             </tr>
 
-                            <!-- Final bill total after discount -->
                             <tr class="border-top">
                                 <td class="fw-bold ps-0 pt-2">New Total</td>
                                 <td class="text-end pe-0 pt-2">
@@ -171,10 +249,8 @@
                                 </td>
                             </tr>
 
-                            <!-- Spacer -->
                             <tr><td colspan="2" class="py-1"></td></tr>
 
-                            <!-- Previously paid (from DB, read-only) -->
                             <tr>
                                 <td class="text-muted ps-0">
                                     Previously Paid
@@ -187,7 +263,6 @@
                                 </td>
                             </tr>
 
-                            <!-- Additional payment being entered now -->
                             <tr>
                                 <td class="text-muted ps-0">
                                     Additional Now
@@ -200,7 +275,6 @@
                                 </td>
                             </tr>
 
-                            <!-- Total paid = prev + additional -->
                             <tr class="border-top">
                                 <td class="fw-semibold ps-0 pt-2">Total Paid</td>
                                 <td class="text-end pe-0 pt-2 text-success fw-bold">
@@ -211,20 +285,17 @@
                         </tbody>
                     </table>
 
-                    <!-- Balance Due — large, prominent -->
                     <div class="d-flex justify-content-between align-items-center
                                 mt-2 pt-2 border-top border-2">
                         <span class="fw-bold fs-6">Balance Due</span>
                         <span id="balanceDisplay" class="fw-bold fs-4 text-danger">&#8377;0.00</span>
                     </div>
 
-                    <!-- Status -->
                     <div class="d-flex justify-content-between align-items-center mt-2 mb-3">
                         <span class="text-muted small">Payment Status</span>
                         <span id="statusPreview" class="badge badge-pending">PENDING</span>
                     </div>
 
-                    <!-- Additional Payment Input Box -->
                     <div class="border rounded p-2 mb-3 bg-light">
                         <p class="text-muted small mb-2 fw-semibold">
                             <i class="bi bi-plus-circle me-1 text-success"></i>
@@ -277,14 +348,12 @@
 
                     </div>
 
-                    <!-- Due Date -->
                     <div class="mb-3">
                         <label class="form-label">Due Date</label>
                         <input type="date" name="dueDate" class="form-control form-control-sm"
                                th:value="${bill.dueDate}"/>
                     </div>
 
-                    <!-- Notes -->
                     <div class="mb-3">
                         <label class="form-label">Notes</label>
                         <textarea name="notes" class="form-control form-control-sm"
@@ -309,75 +378,78 @@
     </div>
 </form>
 
-<!-- rowIndex for JS new row naming — safe integer inline -->
 <script th:inline="javascript">
 /*<![CDATA[*/
-var rowIndex = /*[[${services != null ? services.size() : 1}]]*/ 1;
+var rowIndex     = /*[[${labourItems != null ? labourItems.size() : 1}]]*/ 1;
+var partRowIndex = /*[[${partItems != null ? partItems.size() : 0}]]*/ 0;
 /*]]>*/
 </script>
 
-<!--
-    ════════════════════════════════════════════════════════════
-    ROOT CAUSE OF THE BUG — bill.js loaded in base.html AFTER
-    this fragment runs. bill.js defines its OWN calculateTotal()
-    which only looks at #initialPayment and #discountAmount —
-    both absent on the edit page — so balance always = full total.
-
-    THE FIX:
-    We redefine calculateTotal() here, at the BOTTOM of this
-    fragment. Because base.html injects bill.js via:
-        <script th:src="@{/js/bill.js}"></script>
-    BEFORE closing </body>, and Thymeleaf inserts th:replace
-    content BEFORE that script tag, the execution order is:
-
-        1. bill.js loads  → defines calculateTotal() (wrong version)
-        2. THIS script runs via window.addEventListener('load')
-           → redefines calculateTotal() with correct edit logic
-           → calls it immediately with correct dbPaidAmount
-
-    We use window.addEventListener('load') not DOMContentLoaded
-    because 'load' fires AFTER all scripts including bill.js,
-    guaranteeing our override wins.
-    ════════════════════════════════════════════════════════════
--->
 <script>
 window.addEventListener('load', function () {
 
-    // Read server values from hidden inputs — set by Thymeleaf th:value
+    // ── CRITICAL FIX ──────────────────────────────────────────
+    // bill.js's own DOMContentLoaded handler may attach an
+    // addEventListener('input', calculateTotal) directly on
+    // #additionalPayment, capturing a reference to bill.js's
+    // OLD calculateTotal (labour-only, no parts awareness).
+    // Reassigning the global `calculateTotal` below does NOT
+    // change what that already-bound listener calls — it still
+    // fires the stale version right after ours runs, snapping
+    // the displayed totals back to a wrong labour-only number.
+    //
+    // FIX: clone the additionalPayment input to strip any
+    // addEventListener bindings while preserving the inline
+    // oninput="calculateTotal()" HTML attribute (cloneNode
+    // copies attributes, never JS listeners). Purely removes
+    // the duplicate stale listener — no visual change.
+    (function () {
+        var el = document.getElementById('additionalPayment');
+        if (el) {
+            var clone = el.cloneNode(true);
+            el.parentNode.replaceChild(clone, el);
+        }
+    })();
+
     var dbPaidAmount     = parseFloat(document.getElementById('paidAmountData').value)     || 0;
     var dbDiscountAmount = parseFloat(document.getElementById('discountAmountData').value) || 0;
     if (dbPaidAmount     < 0) dbPaidAmount     = 0;
     if (dbDiscountAmount < 0) dbDiscountAmount = 0;
 
-    // ── OVERRIDE calculateTotal ──────────────────────────────
-    // This replaces the bill.js version for the edit page only.
-    // All other pages (create bill etc.) still use bill.js version
-    // because they don't load this fragment.
     calculateTotal = function () {
 
-        // 1. Sum all service amount inputs
-        var inputs = document.querySelectorAll('.amount-input');
-        var rawServicesSum = 0;
-        inputs.forEach(function (inp) {
+        var labourInputs = document.querySelectorAll('.amount-input');
+        var labourTotal  = 0;
+        labourInputs.forEach(function (inp) {
             var v = parseFloat(inp.value) || 0;
             if (v < 0) v = 0;
-            rawServicesSum += v;
+            labourTotal += v;
         });
 
-        // 2. Subtract existing discount (fixed at bill creation)
+        var partRows   = document.querySelectorAll('.part-row');
+        var partsTotal = 0;
+        partRows.forEach(function (row) {
+            var qtyEl   = row.querySelector('.part-qty-input');
+            var priceEl = row.querySelector('.part-price-input');
+            var qty     = parseFloat(qtyEl   ? qtyEl.value   : 0) || 0;
+            var price   = parseFloat(priceEl ? priceEl.value : 0) || 0;
+            if (qty < 0) qty = 0;
+            if (price < 0) price = 0;
+            partsTotal += (qty * price);
+        });
+
+        var rawServicesSum = labourTotal + partsTotal;
+
         var discount = dbDiscountAmount;
         if (discount > rawServicesSum) discount = rawServicesSum;
         var newTotal = rawServicesSum - discount;
 
-        // 3. Previously paid — from DB, never from form input
         var prevPaid = dbPaidAmount;
 
-        // 4. Additional payment being entered right now
         var addPayEl = document.getElementById('additionalPayment');
         var addPay   = parseFloat(addPayEl ? addPayEl.value : 0) || 0;
         if (addPay < 0) addPay = 0;
 
-        // 5. Total paid = prev + additional, capped at newTotal
         var totalPaid = prevPaid + addPay;
         if (totalPaid > newTotal) {
             totalPaid = newTotal;
@@ -386,49 +458,43 @@ window.addEventListener('load', function () {
             if (addPayEl) addPayEl.value = addPay.toFixed(2);
         }
 
-        // 6. Balance
         var balance = newTotal - totalPaid;
         if (balance < 0) balance = 0;
 
-        // 7. Status
         var status;
         if (newTotal > 0 && balance === 0)     status = 'PAID';
         else if (totalPaid > 0 && balance > 0) status = 'PARTIAL';
         else                                    status = 'PENDING';
 
-        // 8. Update all display elements
+        var labourDisp = document.getElementById('labourTotalDisplay');
+        if (labourDisp) labourDisp.textContent = '\u20B9' + labourTotal.toFixed(2);
 
-        // Services subtotal (before discount)
+        var partsDisp = document.getElementById('partsTotalDisplay');
+        if (partsDisp) partsDisp.textContent = '\u20B9' + partsTotal.toFixed(2);
+
         var subtotalEl = document.getElementById('subtotalDisplay');
         if (subtotalEl) subtotalEl.textContent = '\u20B9' + rawServicesSum.toFixed(2);
 
-        // Discount row — show only when discount > 0
         var discountRow = document.getElementById('discountBreakdownRow');
         var discountDisp = document.getElementById('discountBreakdownDisplay');
         if (discountRow) discountRow.style.display = discount > 0 ? '' : 'none';
         if (discountDisp) discountDisp.textContent = '\u20B9' + discount.toFixed(2);
 
-        // New total (after discount)
         var totalDisp = document.getElementById('totalAmountDisplay');
         if (totalDisp) totalDisp.textContent = '\u20B9' + newTotal.toFixed(2);
 
-        // Hidden total for form submission
         var totalHid = document.getElementById('totalAmountHidden');
         if (totalHid) totalHid.value = newTotal.toFixed(2);
 
-        // Previously paid
         var prevPaidEl = document.getElementById('prevPaidDisplay');
         if (prevPaidEl) prevPaidEl.textContent = prevPaid.toFixed(2);
 
-        // Additional now
         var addPayEl2 = document.getElementById('addPayDisplay');
         if (addPayEl2) addPayEl2.textContent = addPay.toFixed(2);
 
-        // Total paid
         var totalPaidEl = document.getElementById('totalPaidDisplay');
         if (totalPaidEl) totalPaidEl.textContent = totalPaid.toFixed(2);
 
-        // Balance due
         var balEl = document.getElementById('balanceDisplay');
         if (balEl) {
             balEl.textContent = '\u20B9' + balance.toFixed(2);
@@ -437,7 +503,6 @@ window.addEventListener('load', function () {
                 : 'fw-bold fs-4 text-danger';
         }
 
-        // Status badge
         var statusEl = document.getElementById('statusPreview');
         if (statusEl) {
             statusEl.textContent = status;
@@ -445,10 +510,6 @@ window.addEventListener('load', function () {
         }
     };
 
-    // ── OVERRIDE addServiceRow for edit page ─────────────────
-    // bill.js uses rowCount starting from 1 — this causes index
-    // collisions with existing Thymeleaf-rendered rows (0, 1...).
-    // We override with rowIndex set by Thymeleaf to services.size().
     addServiceRow = function () {
         var container = document.getElementById('serviceRowsContainer');
         if (!container) return;
@@ -492,7 +553,6 @@ window.addEventListener('load', function () {
         container.insertAdjacentHTML('beforeend', html);
         rowIndex++;
 
-        // disable delete btn if only one row
         var allRows = container.querySelectorAll('.service-row');
         var btns    = container.querySelectorAll('.service-row .btn-outline-danger');
         btns.forEach(function (btn) { btn.disabled = (allRows.length === 1); });
@@ -506,11 +566,118 @@ window.addEventListener('load', function () {
         calculateTotal();
     };
 
-    // Run the correct calculateTotal immediately on page load
+    addPartRow = function () {
+        var container = document.getElementById('partRowsContainer');
+        if (!container) return;
+
+        var idx = partRowIndex;
+
+        var html =
+            '<div class="part-row mb-2" id="partRow_' + idx + '">' +
+                '<div class="row g-2 align-items-center">' +
+                    '<div class="col-md-4">' +
+                        '<input type="text"' +
+                               ' name="parts[' + idx + '].partName"' +
+                               ' class="form-control form-control-sm"' +
+                               ' placeholder="e.g. Brake Pad Set"/>' +
+                    '</div>' +
+                    '<div class="col-md-2">' +
+                        '<input type="number"' +
+                               ' name="parts[' + idx + '].qty"' +
+                               ' class="form-control form-control-sm part-qty-input"' +
+                               ' placeholder="1" min="0" step="1"' +
+                               ' oninput="calculatePartAmount(\'partRow_' + idx + '\'); calculateTotal();"/>' +
+                    '</div>' +
+                    '<div class="col-md-3">' +
+                        '<div class="input-group input-group-sm">' +
+                            '<span class="input-group-text">&#8377;</span>' +
+                            '<input type="number"' +
+                                   ' name="parts[' + idx + '].unitPrice"' +
+                                   ' class="form-control form-control-sm part-price-input"' +
+                                   ' placeholder="0.00" min="0" step="0.01"' +
+                                   ' oninput="calculatePartAmount(\'partRow_' + idx + '\'); calculateTotal();"/>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="col-md-2">' +
+                        '<div class="input-group input-group-sm">' +
+                            '<span class="input-group-text">&#8377;</span>' +
+                            '<input type="text" class="form-control form-control-sm part-amount-display"' +
+                                   ' value="0.00" readonly style="background:#f8f9fa"/>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="col-md-1 text-center">' +
+                        '<button type="button" class="btn btn-outline-danger btn-sm"' +
+                                ' onclick="removePartRow(\'partRow_' + idx + '\')">' +
+                            '<i class="bi bi-trash"></i>' +
+                        '</button>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+
+        container.insertAdjacentHTML('beforeend', html);
+        partRowIndex++;
+
+        var msg = document.getElementById('noPartsMessage');
+        if (msg) msg.style.display = 'none';
+
+        var newRow = document.getElementById('partRow_' + (partRowIndex - 1));
+        if (newRow) {
+            var nameInput = newRow.querySelector('input[type="text"]');
+            if (nameInput) nameInput.focus();
+        }
+
+        calculateTotal();
+    };
+
+    removePartRow = function (rowId) {
+        var row = document.getElementById(rowId);
+        if (row) row.remove();
+
+        var container = document.getElementById('partRowsContainer');
+        var msg = document.getElementById('noPartsMessage');
+        if (container && msg) {
+            msg.style.display = container.children.length === 0 ? 'block' : 'none';
+        }
+
+        calculateTotal();
+    };
+
+    calculatePartAmount = function (rowId) {
+        var row = document.getElementById(rowId);
+        if (!row) return;
+
+        var qtyEl   = row.querySelector('.part-qty-input');
+        var priceEl = row.querySelector('.part-price-input');
+        var dispEl  = row.querySelector('.part-amount-display');
+
+        var qty   = parseFloat(qtyEl   ? qtyEl.value   : 0) || 0;
+        var price = parseFloat(priceEl ? priceEl.value : 0) || 0;
+        if (qty < 0) qty = 0;
+        if (price < 0) price = 0;
+
+        var amount = qty * price;
+        if (dispEl) dispEl.value = amount.toFixed(2);
+    };
+
     calculateTotal();
 });
 
-// validateEditForm stays here — not in bill.js so no conflict
+function removeRow(rowId) {
+    var allRows = document.querySelectorAll('.service-row');
+    if (allRows.length <= 1) {
+        alert('At least one service is required.');
+        return;
+    }
+    var row = document.getElementById(rowId);
+    if (row) row.remove();
+
+    var btns = document.querySelectorAll('.service-row .btn-outline-danger');
+    var remaining = document.querySelectorAll('.service-row');
+    btns.forEach(function (btn) { btn.disabled = (remaining.length === 1); });
+
+    if (typeof calculateTotal === 'function') calculateTotal();
+}
+
 function validateEditForm() {
     var serviceNames = document.querySelectorAll('[name$=".serviceName"]');
     var hasService   = false;
