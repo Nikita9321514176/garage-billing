@@ -374,6 +374,7 @@ public class BillController {
 
         Bill bill = billOpt.get();
         model.addAttribute("bill", bill);
+        model.addAttribute("gst", billService.getGstBreakdown(bill));
         model.addAttribute("payments", paymentService.getPaymentHistory(id));
         model.addAttribute("newPayment", new Payment());
         return "bill/detail";

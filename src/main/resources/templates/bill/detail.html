@@ -183,19 +183,14 @@
                         discountAmount row only appears if discount > 0.
                     -->
                     <tfoot class="table-light">
-                        <!-- Subtotal row (services sum before discount) -->
-                        <tr th:if="${bill.discountAmount != null
-                                    and bill.discountAmount.compareTo(
-                                        T(java.math.BigDecimal).ZERO) > 0}">
-                            <td colspan="3"
-                                class="text-end text-muted">
+                        <!-- Services subtotal -->
+                        <tr>
+                            <td colspan="3" class="text-end text-muted">
                                 Subtotal
                             </td>
                             <td class="text-end text-muted">
                                 &#8377;<span th:text="${#numbers.formatDecimal(
-                                    bill.totalAmount.add(
-                                        bill.discountAmount),
-                                    1,'COMMA',2,'POINT')}">
+                                    gst.subtotal, 1,'COMMA',2,'POINT')}">
                                 </span>
                             </td>
                         </tr>
@@ -207,22 +202,53 @@
                                 class="text-end text-success">
                                 Discount
                             </td>
-                            <td class="text-end text-success
-                                       fw-semibold">
+                            <td class="text-end text-success fw-semibold">
                                 - &#8377;<span th:text="${#numbers.formatDecimal(
                                     bill.discountAmount,
                                     1,'COMMA',2,'POINT')}">
                                 </span>
                             </td>
                         </tr>
-                        <!-- Final total row — always shown -->
+                        <!-- Taxable amount -->
+                        <tr>
+                            <td colspan="3" class="text-end text-muted">
+                                Taxable Amount
+                            </td>
+                            <td class="text-end text-muted">
+                                &#8377;<span th:text="${#numbers.formatDecimal(
+                                    gst.taxableAmount, 1,'COMMA',2,'POINT')}">
+                                </span>
+                            </td>
+                        </tr>
+                        <!-- CGST -->
+                        <tr>
+                            <td colspan="3" class="text-end text-muted">
+                                CGST @ 9%
+                            </td>
+                            <td class="text-end text-muted">
+                                &#8377;<span th:text="${#numbers.formatDecimal(
+                                    gst.cgstAmount, 1,'COMMA',2,'POINT')}">
+                                </span>
+                            </td>
+                        </tr>
+                        <!-- SGST -->
+                        <tr>
+                            <td colspan="3" class="text-end text-muted">
+                                SGST @ 9%
+                            </td>
+                            <td class="text-end text-muted">
+                                &#8377;<span th:text="${#numbers.formatDecimal(
+                                    gst.sgstAmount, 1,'COMMA',2,'POINT')}">
+                                </span>
+                            </td>
+                        </tr>
+                        <!-- Grand total row -->
                         <tr>
                             <td colspan="3"
                                 class="text-end fw-bold">
-                                Total
+                                Grand Total <span class="text-muted small fw-normal">(incl. GST)</span>
                             </td>
-                            <td class="text-end fw-bold
-                                       text-primary">
+                            <td class="text-end fw-bold text-primary">
                                 &#8377;<span th:text="${#numbers.formatDecimal(
                                     bill.totalAmount,
                                     1,'COMMA',2,'POINT')}">
@@ -316,7 +342,7 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between
                                 mb-2">
-                        <span class="text-muted">Total Bill</span>
+                        <span class="text-muted">Total Bill <span class="small">(incl. GST)</span></span>
                         <strong>
                             &#8377;<span th:text="${#numbers.formatDecimal(
                                 bill.totalAmount,

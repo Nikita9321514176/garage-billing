@@ -4,6 +4,8 @@ import com.garage.billing.model.Bill;
 import com.garage.billing.model.BillServiceItem;
 import com.garage.billing.repository.BillRepository;
 import com.garage.billing.util.BillNumberGenerator;
+import com.garage.billing.util.GstCalculator;
+import com.garage.billing.util.GstCalculator.GstBreakdown;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -30,16 +32,11 @@ public class BillService {
                 .filter(a -> a != null)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal discount = bill.getDiscountAmount() != null
-                ? bill.getDiscountAmount() : BigDecimal.ZERO;
-        if (discount.compareTo(subtotal) > 0) {
-            discount = subtotal;
-            bill.setDiscountAmount(discount);
-        }
+        GstBreakdown gst = GstCalculator.calculate(subtotal, bill.getDiscountAmount());
+        bill.setDiscountAmount(gst.getDiscount());
+        bill.setTotalAmount(gst.getGrandTotal());
 
-        BigDecimal finalTotal = subtotal.subtract(discount);
-        bill.setTotalAmount(finalTotal);
-
+        BigDecimal finalTotal = gst.getGrandTotal();
         BigDecimal paid = bill.getPaidAmount() != null
                 ? bill.getPaidAmount() : BigDecimal.ZERO;
         if (paid.compareTo(finalTotal) > 0) paid = finalTotal;
@@ -72,14 +69,9 @@ public class BillService {
                 .filter(a -> a != null)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal discount = bill.getDiscountAmount() != null
-                ? bill.getDiscountAmount() : BigDecimal.ZERO;
-        if (discount.compareTo(subtotal) > 0) {
-            discount = subtotal;
-            bill.setDiscountAmount(discount);
-        }
-
-        BigDecimal newTotal = subtotal.subtract(discount);
+        GstBreakdown gst = GstCalculator.calculate(subtotal, bill.getDiscountAmount());
+        bill.setDiscountAmount(gst.getDiscount());
+        BigDecimal newTotal = gst.getGrandTotal();
 
         BigDecimal currentPaid = bill.getPaidAmount() != null
                 ? bill.getPaidAmount() : BigDecimal.ZERO;
@@ -105,6 +97,17 @@ public class BillService {
         }
 
         return bill;
+    }
+
+    public GstBreakdown getGstBreakdown(Bill bill) {
+        BigDecimal subtotal = BigDecimal.ZERO;
+        if (bill.getServices() != null) {
+            subtotal = bill.getServices().stream()
+                    .map(BillServiceItem::getAmount)
+                    .filter(a -> a != null)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+        }
+        return GstCalculator.calculate(subtotal, bill.getDiscountAmount());
     }
 
     public String determineStatus(BigDecimal total, BigDecimal paid, BigDecimal balance) {

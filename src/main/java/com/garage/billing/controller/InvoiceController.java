@@ -57,6 +57,7 @@ public class InvoiceController {
         List<Payment> payments = paymentService.getPaymentHistory(bill.getId());
 
         model.addAttribute("bill", bill);
+        model.addAttribute("gst", billService.getGstBreakdown(bill));
         model.addAttribute("payments", payments);
         model.addAttribute("billNumber", billNumber);
 

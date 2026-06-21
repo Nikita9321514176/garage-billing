@@ -346,9 +346,9 @@
 
             <div class="card-body">
 
-                <!-- Total Amount -->
+                <!-- Total Amount (incl. GST) -->
                 <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
-                    <span class="text-muted">Total Amount</span>
+                    <span class="text-muted">Grand Total <span class="small">(incl. GST)</span></span>
                     <span id="totalAmountDisplay" class="fw-bold fs-4 text-primary">
                         &#8377;0.00
                     </span>
@@ -387,13 +387,27 @@
                     style="display:none" can be overridden by JS.
                     style="display:none !important" CANNOT be overridden by JS.
                 -->
-                <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom"
+                <div class="d-flex justify-content-between align-items-center mb-2"
                      id="discountRow"
                      style="display:none">
                     <span class="text-muted small">Discount Applied</span>
                     <span id="discountDisplay" class="small text-success fw-semibold">
                         - &#8377;0.00
                     </span>
+                </div>
+
+                <!-- GST breakdown -->
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="text-muted small">Taxable Amount</span>
+                    <span id="taxableDisplay" class="small">&#8377;0.00</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="text-muted small">CGST @ 9%</span>
+                    <span id="cgstDisplay" class="small">&#8377;0.00</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                    <span class="text-muted small">SGST @ 9%</span>
+                    <span id="sgstDisplay" class="small">&#8377;0.00</span>
                 </div>
 
                 <!-- ── PAYMENT DETAILS BOX ─────────────────────────
@@ -620,20 +634,21 @@ function calculateTotal() {
         rawTotal += v;
     });
 
-    // Discount
-    var discEl   = document.getElementById('discountAmount');
+    // Subtotal = rawTotal - discount, then add 18% GST (9% CGST + 9% SGST)
     var discount = parseFloat(discEl ? discEl.value : 0) || 0;
     if (discount < 0)        discount = 0;
-    if (discount > rawTotal) discount = rawTotal; // can't discount more than total
+    if (discount > rawTotal) discount = rawTotal;
 
-    // Subtotal = rawTotal - discount
-    var subtotal = rawTotal - discount;
+    var taxable = Math.round((rawTotal - discount) * 100) / 100;
+    var cgst = Math.round(taxable * 0.09 * 100) / 100;
+    var sgst = Math.round(taxable * 0.09 * 100) / 100;
+    var subtotal = Math.round((taxable + cgst + sgst) * 100) / 100;
 
     // Payment received now
     var payEl  = document.getElementById('initialPayment');
     var payNow = parseFloat(payEl ? payEl.value : 0) || 0;
     if (payNow < 0)        payNow = 0;
-    if (payNow > subtotal) {           // cap payment at subtotal
+    if (payNow > subtotal) {
         payNow = subtotal;
         if (payEl) payEl.value = subtotal.toFixed(2);
     }
@@ -651,13 +666,22 @@ function calculateTotal() {
     // ── Update display elements ──────────────────────────────────
 
     var totalDisp = document.getElementById('totalAmountDisplay');
-    if (totalDisp) totalDisp.textContent = '₹' + rawTotal.toFixed(2);
+    if (totalDisp) totalDisp.textContent = '₹' + subtotal.toFixed(2);
 
     var totalHid = document.getElementById('totalAmountHidden');
-    if (totalHid) totalHid.value = rawTotal.toFixed(2);
+    if (totalHid) totalHid.value = subtotal.toFixed(2);
 
     var subDisp = document.getElementById('subtotalDisplay');
-    if (subDisp) subDisp.textContent = '₹' + subtotal.toFixed(2);
+    if (subDisp) subDisp.textContent = '₹' + rawTotal.toFixed(2);
+
+    var taxableDisp = document.getElementById('taxableDisplay');
+    if (taxableDisp) taxableDisp.textContent = '₹' + taxable.toFixed(2);
+
+    var cgstDisp = document.getElementById('cgstDisplay');
+    if (cgstDisp) cgstDisp.textContent = '₹' + cgst.toFixed(2);
+
+    var sgstDisp = document.getElementById('sgstDisplay');
+    if (sgstDisp) sgstDisp.textContent = '₹' + sgst.toFixed(2);
 
     // Discount row: show only when discount > 0
     var discRow  = document.getElementById('discountRow');

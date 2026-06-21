@@ -11,6 +11,8 @@ import com.garage.billing.model.Car;
 import com.garage.billing.model.Payment;
 import com.garage.billing.repository.CarRepository;
 import com.garage.billing.util.AmountInWordsConverter;
+import com.garage.billing.util.GstCalculator;
+import com.garage.billing.util.GstCalculator.GstBreakdown;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -434,43 +436,15 @@ public class PdfService {
                 ? bill.getDiscountAmount() : BigDecimal.ZERO;
 
         // Taxable amount = subtotal - discount (before GST)
-        BigDecimal taxableAmount = subtotal.subtract(discount);
-        if (taxableAmount.compareTo(BigDecimal.ZERO) < 0) {
-            taxableAmount = BigDecimal.ZERO;
-        }
+        GstBreakdown gst = GstCalculator.calculate(subtotal, discount);
+        BigDecimal taxableAmount = gst.getTaxableAmount();
+        BigDecimal cgst = gst.getCgstAmount();
+        BigDecimal sgst = gst.getSgstAmount();
 
-        // ── GST calculation ───────────────────────────────────
-        // Only calculated if GST_NUMBER is configured (you confirmed
-        // registered). If blank, garage is not yet registered and
-        // GST shows as Rs. 0.00 — invoice remains valid either way.
-        boolean gstApplicable = GarageConfig.GST_NUMBER != null
-                && !GarageConfig.GST_NUMBER.isEmpty();
-
-        BigDecimal cgst = BigDecimal.ZERO;
-        BigDecimal sgst = BigDecimal.ZERO;
-        BigDecimal totalGst = BigDecimal.ZERO;
-
-        if (gstApplicable) {
-            cgst = taxableAmount
-                .multiply(GarageConfig.CGST_RATE)
-                .divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
-            sgst = taxableAmount
-                .multiply(GarageConfig.SGST_RATE)
-                .divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
-            totalGst = cgst.add(sgst);
-        }
-
-        // ── Grand Total (exact, before rounding) ─────────────
-        // bill.getTotalAmount() is the authoritative value already
-        // calculated and stored by BillService (subtotal - discount).
-        // We layer GST on top here for PDF display purposes only —
-        // this does NOT alter bill.totalAmount in the database,
-        // satisfying "do not modify existing calculations" requirement.
-        BigDecimal exactGrandTotal = taxableAmount.add(totalGst);
-
-        // ── Round Off ─────────────────────────────────────────
-        BigDecimal roundedGrandTotal = exactGrandTotal.setScale(0, RoundingMode.HALF_UP);
-        BigDecimal roundOff = roundedGrandTotal.subtract(exactGrandTotal);
+        // Grand total stored by BillService (includes 18% GST)
+        BigDecimal displayedGrandTotal = bill.getTotalAmount() != null
+                ? bill.getTotalAmount()
+                : gst.getGrandTotal();
 
         PdfPTable wrapper = new PdfPTable(2);
         wrapper.setWidthPercentage(100);
@@ -503,21 +477,15 @@ public class PdfService {
                 "- " + formatCurrency(discount), discLabel, discValue);
         }
 
-        if (gstApplicable) {
-            addTotalRow(totalsCell,
-                "CGST @ " + GarageConfig.CGST_RATE + "%",
-                formatCurrency(cgst), FONT_MUTED, FONT_MUTED);
-            addTotalRow(totalsCell,
-                "SGST @ " + GarageConfig.SGST_RATE + "%",
-                formatCurrency(sgst), FONT_MUTED, FONT_MUTED);
-        } else {
-            addTotalRow(totalsCell, "GST", "Rs. 0.00", FONT_MUTED, FONT_MUTED);
-        }
+        addTotalRow(totalsCell, "Taxable Amount",
+            formatCurrency(taxableAmount), FONT_MUTED, FONT_MUTED);
 
-        if (roundOff.compareTo(BigDecimal.ZERO) != 0) {
-            addTotalRow(totalsCell, "Round Off",
-                formatSignedCurrency(roundOff), FONT_MUTED, FONT_MUTED);
-        }
+        addTotalRow(totalsCell,
+            "CGST @ " + GstCalculator.CGST_RATE + "%",
+            formatCurrency(cgst), FONT_MUTED, FONT_MUTED);
+        addTotalRow(totalsCell,
+            "SGST @ " + GstCalculator.SGST_RATE + "%",
+            formatCurrency(sgst), FONT_MUTED, FONT_MUTED);
 
         // Divider
         Paragraph sep = new Paragraph(" ",
@@ -526,15 +494,7 @@ public class PdfService {
         sep.setSpacingAfter(2f);
         totalsCell.addElement(sep);
 
-        // Grand Total — uses bill.getTotalAmount() as the source of
-        // truth for what the customer actually owes (matches Amount
-        // Paid / Balance Due already stored by BillService). The GST
-        // breakdown above is informational on the PDF; if GST is not
-        // applicable, Grand Total naturally equals bill.totalAmount.
-        BigDecimal displayedGrandTotal = gstApplicable
-            ? roundedGrandTotal
-            : bill.getTotalAmount();
-
+        // Grand Total — matches BillService (tax-inclusive)
         addTotalRow(totalsCell, "Grand Total",
             formatCurrency(displayedGrandTotal),
             FONT_GRAND_TOTAL, FONT_GRAND_TOTAL);
