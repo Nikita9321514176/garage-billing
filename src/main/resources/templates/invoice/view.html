@@ -349,13 +349,9 @@
                     <!-- Subtotal (services sum before discount) -->
                     <div class="total-row">
                         <span class="text-muted">Subtotal</span>
-                        <span th:with="sub=${bill.discountAmount != null
-                                and bill.discountAmount.compareTo(
-                                    T(java.math.BigDecimal).ZERO) > 0
-                                ? bill.totalAmount.add(bill.discountAmount)
-                                : bill.totalAmount}">
+                        <span>
                             &#8377;<span th:text="${#numbers.formatDecimal(
-                                sub, 1, 'COMMA', 2, 'POINT')}"></span>
+                                gst.subtotal, 1, 'COMMA', 2, 'POINT')}"></span>
                         </span>
                     </div>
 
@@ -373,9 +369,36 @@
                         </span>
                     </div>
 
+                    <!-- Taxable amount -->
+                    <div class="total-row">
+                        <span class="text-muted">Taxable Amount</span>
+                        <span>
+                            &#8377;<span th:text="${#numbers.formatDecimal(
+                                gst.taxableAmount, 1, 'COMMA', 2, 'POINT')}"></span>
+                        </span>
+                    </div>
+
+                    <!-- CGST -->
+                    <div class="total-row">
+                        <span class="text-muted">CGST @ 9%</span>
+                        <span>
+                            &#8377;<span th:text="${#numbers.formatDecimal(
+                                gst.cgstAmount, 1, 'COMMA', 2, 'POINT')}"></span>
+                        </span>
+                    </div>
+
+                    <!-- SGST -->
+                    <div class="total-row">
+                        <span class="text-muted">SGST @ 9%</span>
+                        <span>
+                            &#8377;<span th:text="${#numbers.formatDecimal(
+                                gst.sgstAmount, 1, 'COMMA', 2, 'POINT')}"></span>
+                        </span>
+                    </div>
+
                     <!-- Grand Total -->
                     <div class="total-row grand-total">
-                        <span>Grand Total</span>
+                        <span>Grand Total <span class="small">(incl. GST)</span></span>
                         <span>
                             &#8377;<span th:text="${#numbers.formatDecimal(
                                 bill.totalAmount, 1, 'COMMA', 2, 'POINT')}"></span>

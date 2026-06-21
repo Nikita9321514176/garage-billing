@@ -425,6 +425,7 @@ public class BillController {
         }
 
         model.addAttribute("bill", bill);
+        model.addAttribute("gst", billService.getGstBreakdown(bill));
         model.addAttribute("labourItems", labourItems);
         model.addAttribute("partItems", partItems);
         model.addAttribute("payments", paymentService.getPaymentHistory(id));

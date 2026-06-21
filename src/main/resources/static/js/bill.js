@@ -96,6 +96,32 @@ function removeRow(rowId) {
 }
 
 // =====================================================
+// GST (18% = 9% CGST + 9% SGST)
+// =====================================================
+var CGST_RATE = 9;
+var SGST_RATE = 9;
+
+function calculateGst(subtotal, discount) {
+    if (discount > subtotal) {
+        discount = subtotal;
+    }
+
+    var taxable = round2(subtotal - discount);
+    var cgst = round2(taxable * CGST_RATE / 100);
+    var sgst = round2(taxable * SGST_RATE / 100);
+    var grandTotal = round2(taxable + cgst + sgst);
+
+    return {
+        subtotal: subtotal,
+        discount: discount,
+        taxable: taxable,
+        cgst: cgst,
+        sgst: sgst,
+        grandTotal: grandTotal
+    };
+}
+
+// =====================================================
 // CALCULATE BILL
 // =====================================================
 function calculateTotal() {
@@ -125,16 +151,12 @@ function calculateTotal() {
         ? parseFloat(discountField.value) || 0
         : 0;
 
-    if (discount > subtotal) {
-        discount = subtotal;
-    }
-
     // -------------------------
-    // Grand Total
+    // GST + Grand Total
     // -------------------------
 
-    var grandTotal =
-        round2(subtotal - discount);
+    var gst = calculateGst(subtotal, discount);
+    var grandTotal = gst.grandTotal;
 
     // -------------------------
     // Payment Received
@@ -147,6 +169,13 @@ function calculateTotal() {
         paymentInput
         ? parseFloat(paymentInput.value) || 0
         : 0;
+
+    if (payment > grandTotal) {
+        payment = grandTotal;
+        if (paymentInput) {
+            paymentInput.value = grandTotal.toFixed(2);
+        }
+    }
 
     // -------------------------
     // Balance
@@ -170,7 +199,22 @@ function calculateTotal() {
 
     setText(
         'discountDisplay',
-        '- ₹' + formatCurrency(discount)
+        '- ₹' + formatCurrency(gst.discount)
+    );
+
+    setText(
+        'taxableDisplay',
+        '₹' + formatCurrency(gst.taxable)
+    );
+
+    setText(
+        'cgstDisplay',
+        '₹' + formatCurrency(gst.cgst)
+    );
+
+    setText(
+        'sgstDisplay',
+        '₹' + formatCurrency(gst.sgst)
     );
 
     setText(
@@ -199,7 +243,7 @@ function calculateTotal() {
 
     if (discountRow) {
 
-        if (discount > 0) {
+        if (gst.discount > 0) {
             discountRow.style.display = 'flex';
         } else {
             discountRow.style.display = 'none';

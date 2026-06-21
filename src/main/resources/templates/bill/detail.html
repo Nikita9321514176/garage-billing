@@ -272,15 +272,11 @@
 		               <div class="row justify-content-end">
 		                   <div class="col-md-6">
 
-		                       <div class="d-flex justify-content-between mb-1"
-		                            th:if="${bill.discountAmount != null
-		                                   and bill.discountAmount.compareTo(
-		                                       T(java.math.BigDecimal).ZERO) > 0}">
+		                       <div class="d-flex justify-content-between mb-1">
 		                           <span class="text-muted">Subtotal</span>
 		                           <span class="text-muted">
 		                               &#8377;<span th:text="${#numbers.formatDecimal(
-		                                   bill.totalAmount.add(bill.discountAmount),
-		                                   1,'COMMA',2,'POINT')}"></span>
+		                                   gst.subtotal, 1,'COMMA',2,'POINT')}"></span>
 		                           </span>
 		                       </div>
 
@@ -295,8 +291,32 @@
 		                           </span>
 		                       </div>
 
+		                       <div class="d-flex justify-content-between mb-1">
+		                           <span class="text-muted">Taxable Amount</span>
+		                           <span class="text-muted">
+		                               &#8377;<span th:text="${#numbers.formatDecimal(
+		                                   gst.taxableAmount, 1,'COMMA',2,'POINT')}"></span>
+		                           </span>
+		                       </div>
+
+		                       <div class="d-flex justify-content-between mb-1">
+		                           <span class="text-muted">CGST @ 9%</span>
+		                           <span class="text-muted">
+		                               &#8377;<span th:text="${#numbers.formatDecimal(
+		                                   gst.cgstAmount, 1,'COMMA',2,'POINT')}"></span>
+		                           </span>
+		                       </div>
+
+		                       <div class="d-flex justify-content-between mb-2">
+		                           <span class="text-muted">SGST @ 9%</span>
+		                           <span class="text-muted">
+		                               &#8377;<span th:text="${#numbers.formatDecimal(
+		                                   gst.sgstAmount, 1,'COMMA',2,'POINT')}"></span>
+		                           </span>
+		                       </div>
+
 		                       <div class="d-flex justify-content-between border-top pt-2">
-		                           <span class="fw-bold">Total</span>
+		                           <span class="fw-bold">Grand Total <span class="text-muted small fw-normal">(incl. GST)</span></span>
 		                           <span class="fw-bold text-primary fs-5">
 		                               &#8377;<span th:text="${#numbers.formatDecimal(
 		                                   bill.totalAmount,1,'COMMA',2,'POINT')}">0.00</span>
@@ -389,7 +409,7 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between
                                 mb-2">
-                        <span class="text-muted">Total Bill</span>
+                        <span class="text-muted">Total Bill <span class="small">(incl. GST)</span></span>
                         <strong>
                             &#8377;<span th:text="${#numbers.formatDecimal(
                                 bill.totalAmount,

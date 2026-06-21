@@ -241,8 +241,29 @@
                                 </td>
                             </tr>
 
+                            <tr>
+                                <td class="text-muted ps-0">Taxable Amount</td>
+                                <td class="text-end pe-0">
+                                    <span id="taxableDisplay">&#8377;0.00</span>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td class="text-muted ps-0">CGST @ 9%</td>
+                                <td class="text-end pe-0">
+                                    <span id="cgstDisplay">&#8377;0.00</span>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td class="text-muted ps-0">SGST @ 9%</td>
+                                <td class="text-end pe-0">
+                                    <span id="sgstDisplay">&#8377;0.00</span>
+                                </td>
+                            </tr>
+
                             <tr class="border-top">
-                                <td class="fw-bold ps-0 pt-2">New Total</td>
+                                <td class="fw-bold ps-0 pt-2">New Total <span class="text-muted small fw-normal">(incl. GST)</span></td>
                                 <td class="text-end pe-0 pt-2">
                                     <span id="totalAmountDisplay"
                                           class="fw-bold fs-5 text-primary">&#8377;0.00</span>
@@ -442,7 +463,10 @@ window.addEventListener('load', function () {
 
         var discount = dbDiscountAmount;
         if (discount > rawServicesSum) discount = rawServicesSum;
-        var newTotal = rawServicesSum - discount;
+        var taxable = Math.round((rawServicesSum - discount) * 100) / 100;
+        var cgst = Math.round(taxable * 0.09 * 100) / 100;
+        var sgst = Math.round(taxable * 0.09 * 100) / 100;
+        var newTotal = Math.round((taxable + cgst + sgst) * 100) / 100;
 
         var prevPaid = dbPaidAmount;
 
@@ -479,6 +503,15 @@ window.addEventListener('load', function () {
         var discountDisp = document.getElementById('discountBreakdownDisplay');
         if (discountRow) discountRow.style.display = discount > 0 ? '' : 'none';
         if (discountDisp) discountDisp.textContent = '\u20B9' + discount.toFixed(2);
+
+        var taxableEl = document.getElementById('taxableDisplay');
+        if (taxableEl) taxableEl.textContent = '\u20B9' + taxable.toFixed(2);
+
+        var cgstEl = document.getElementById('cgstDisplay');
+        if (cgstEl) cgstEl.textContent = '\u20B9' + cgst.toFixed(2);
+
+        var sgstEl = document.getElementById('sgstDisplay');
+        if (sgstEl) sgstEl.textContent = '\u20B9' + sgst.toFixed(2);
 
         var totalDisp = document.getElementById('totalAmountDisplay');
         if (totalDisp) totalDisp.textContent = '\u20B9' + newTotal.toFixed(2);

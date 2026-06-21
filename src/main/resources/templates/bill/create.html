@@ -360,8 +360,9 @@
 
             <div class="card-body">
 
+                <!-- Total Amount (incl. GST) -->
                 <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
-                    <span class="text-muted">Total Amount</span>
+                    <span class="text-muted">Grand Total <span class="small">(incl. GST)</span></span>
                     <span id="totalAmountDisplay" class="fw-bold fs-4 text-primary">
                         &#8377;0.00
                     </span>
@@ -408,6 +409,20 @@
                     <span id="discountDisplay" class="small text-success fw-semibold">
                         - &#8377;0.00
                     </span>
+                </div>
+
+                <!-- GST breakdown -->
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="text-muted small">Taxable Amount</span>
+                    <span id="taxableDisplay" class="small">&#8377;0.00</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="text-muted small">CGST @ 9%</span>
+                    <span id="cgstDisplay" class="small">&#8377;0.00</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                    <span class="text-muted small">SGST @ 9%</span>
+                    <span id="sgstDisplay" class="small">&#8377;0.00</span>
                 </div>
 
                 <div class="border rounded p-2 mb-3 bg-light">
@@ -654,29 +669,32 @@ window.addEventListener('load', function () {
         if (discount < 0)        discount = 0;
         if (discount > rawTotal) discount = rawTotal;
 
-        var subtotal = rawTotal - discount;
+        var taxable = Math.round((rawTotal - discount) * 100) / 100;
+        var cgst = Math.round(taxable * 0.09 * 100) / 100;
+        var sgst = Math.round(taxable * 0.09 * 100) / 100;
+        var grandTotal = Math.round((taxable + cgst + sgst) * 100) / 100;
 
         var payEl  = document.getElementById('initialPayment');
         var payNow = parseFloat(payEl ? payEl.value : 0) || 0;
         if (payNow < 0)        payNow = 0;
-        if (payNow > subtotal) {
-            payNow = subtotal;
-            if (payEl) payEl.value = subtotal.toFixed(2);
+        if (payNow > grandTotal) {
+            payNow = grandTotal;
+            if (payEl) payEl.value = grandTotal.toFixed(2);
         }
 
-        var balance = subtotal - payNow;
+        var balance = grandTotal - payNow;
         if (balance < 0) balance = 0;
 
         var status;
-        if (subtotal > 0 && balance === 0)        status = 'PAID';
+        if (grandTotal > 0 && balance === 0)        status = 'PAID';
         else if (payNow > 0 && balance > 0)       status = 'PARTIAL';
         else                                       status = 'PENDING';
 
         var totalDisp = document.getElementById('totalAmountDisplay');
-        if (totalDisp) totalDisp.textContent = '₹' + rawTotal.toFixed(2);
+        if (totalDisp) totalDisp.textContent = '₹' + grandTotal.toFixed(2);
 
         var totalHid = document.getElementById('totalAmountHidden');
-        if (totalHid) totalHid.value = rawTotal.toFixed(2);
+        if (totalHid) totalHid.value = grandTotal.toFixed(2);
 
         var labourDisp = document.getElementById('labourTotalDisplay');
         if (labourDisp) labourDisp.textContent = '₹' + labourTotal.toFixed(2);
@@ -685,7 +703,16 @@ window.addEventListener('load', function () {
         if (partsDisp) partsDisp.textContent = '₹' + partsTotal.toFixed(2);
 
         var subDisp = document.getElementById('subtotalDisplay');
-        if (subDisp) subDisp.textContent = '₹' + subtotal.toFixed(2);
+        if (subDisp) subDisp.textContent = '₹' + rawTotal.toFixed(2);
+
+        var taxableDisp = document.getElementById('taxableDisplay');
+        if (taxableDisp) taxableDisp.textContent = '₹' + taxable.toFixed(2);
+
+        var cgstDisp = document.getElementById('cgstDisplay');
+        if (cgstDisp) cgstDisp.textContent = '₹' + cgst.toFixed(2);
+
+        var sgstDisp = document.getElementById('sgstDisplay');
+        if (sgstDisp) sgstDisp.textContent = '₹' + sgst.toFixed(2);
 
         var discRow  = document.getElementById('discountRow');
         var discDisp = document.getElementById('discountDisplay');
