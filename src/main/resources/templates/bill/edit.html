@@ -262,6 +262,13 @@
                                 </td>
                             </tr>
 
+                            <tr>
+                                <td class="text-muted ps-0 fw-semibold">Total GST @ 18%</td>
+                                <td class="text-end pe-0 fw-semibold">
+                                    <span id="totalGstDisplay">&#8377;0.00</span>
+                                </td>
+                            </tr>
+
                             <tr class="border-top">
                                 <td class="fw-bold ps-0 pt-2">New Total <span class="text-muted small fw-normal">(incl. GST)</span></td>
                                 <td class="text-end pe-0 pt-2">
@@ -512,6 +519,9 @@ window.addEventListener('load', function () {
 
         var sgstEl = document.getElementById('sgstDisplay');
         if (sgstEl) sgstEl.textContent = '\u20B9' + sgst.toFixed(2);
+
+        var totalGstEl = document.getElementById('totalGstDisplay');
+        if (totalGstEl) totalGstEl.textContent = '\u20B9' + (cgst + sgst).toFixed(2);
 
         var totalDisp = document.getElementById('totalAmountDisplay');
         if (totalDisp) totalDisp.textContent = '\u20B9' + newTotal.toFixed(2);

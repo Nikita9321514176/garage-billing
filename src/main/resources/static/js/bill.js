@@ -126,18 +126,27 @@ function calculateGst(subtotal, discount) {
 // =====================================================
 function calculateTotal() {
 
-    var subtotal = 0;
+    var labourTotal = 0;
 
     document.querySelectorAll('.amount-input').forEach(function(input) {
-
         var value = parseFloat(input.value);
-
         if (!isNaN(value)) {
-            subtotal += value;
+            labourTotal += value;
         }
     });
 
-    subtotal = round2(subtotal);
+    var partsTotal = 0;
+    document.querySelectorAll('.part-row').forEach(function(row) {
+        var qtyEl   = row.querySelector('.part-qty-input');
+        var priceEl = row.querySelector('.part-price-input');
+        var qty     = parseFloat(qtyEl   ? qtyEl.value   : 0) || 0;
+        var price   = parseFloat(priceEl ? priceEl.value : 0) || 0;
+        if (qty < 0) qty = 0;
+        if (price < 0) price = 0;
+        partsTotal += (qty * price);
+    });
+
+    var subtotal = round2(labourTotal + partsTotal);
 
     // -------------------------
     // Discount
@@ -198,6 +207,16 @@ function calculateTotal() {
     );
 
     setText(
+        'labourTotalDisplay',
+        '₹' + formatCurrency(labourTotal)
+    );
+
+    setText(
+        'partsTotalDisplay',
+        '₹' + formatCurrency(partsTotal)
+    );
+
+    setText(
         'discountDisplay',
         '- ₹' + formatCurrency(gst.discount)
     );
@@ -215,6 +234,11 @@ function calculateTotal() {
     setText(
         'sgstDisplay',
         '₹' + formatCurrency(gst.sgst)
+    );
+
+    setText(
+        'totalGstDisplay',
+        '₹' + formatCurrency(gst.cgst + gst.sgst)
     );
 
     setText(

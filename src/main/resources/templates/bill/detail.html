@@ -315,11 +315,19 @@
 		                           </span>
 		                       </div>
 
+		                       <div class="d-flex justify-content-between mb-2">
+		                           <span class="text-muted fw-semibold">Total GST @ 18%</span>
+		                           <span class="text-muted fw-semibold">
+		                               &#8377;<span th:text="${#numbers.formatDecimal(
+		                                   gst.totalGstAmount, 1,'COMMA',2,'POINT')}"></span>
+		                           </span>
+		                       </div>
+
 		                       <div class="d-flex justify-content-between border-top pt-2">
 		                           <span class="fw-bold">Grand Total <span class="text-muted small fw-normal">(incl. GST)</span></span>
 		                           <span class="fw-bold text-primary fs-5">
 		                               &#8377;<span th:text="${#numbers.formatDecimal(
-		                                   bill.totalAmount,1,'COMMA',2,'POINT')}">0.00</span>
+		                                   gst.grandTotal,1,'COMMA',2,'POINT')}">0.00</span>
 		                           </span>
 		                       </div>
 
@@ -412,7 +420,7 @@
                         <span class="text-muted">Total Bill <span class="small">(incl. GST)</span></span>
                         <strong>
                             &#8377;<span th:text="${#numbers.formatDecimal(
-                                bill.totalAmount,
+                                gst.grandTotal,
                                 1,'COMMA',2,'POINT')}">
                             </span>
                         </strong>

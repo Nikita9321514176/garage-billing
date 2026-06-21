@@ -424,6 +424,10 @@
                     <span class="text-muted small">SGST @ 9%</span>
                     <span id="sgstDisplay" class="small">&#8377;0.00</span>
                 </div>
+                <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                    <span class="text-muted small fw-semibold">Total GST @ 18%</span>
+                    <span id="totalGstDisplay" class="small fw-semibold">&#8377;0.00</span>
+                </div>
 
                 <div class="border rounded p-2 mb-3 bg-light">
 
@@ -713,6 +717,9 @@ window.addEventListener('load', function () {
 
         var sgstDisp = document.getElementById('sgstDisplay');
         if (sgstDisp) sgstDisp.textContent = '₹' + sgst.toFixed(2);
+
+        var totalGstDisp = document.getElementById('totalGstDisplay');
+        if (totalGstDisp) totalGstDisp.textContent = '₹' + (cgst + sgst).toFixed(2);
 
         var discRow  = document.getElementById('discountRow');
         var discDisp = document.getElementById('discountDisplay');

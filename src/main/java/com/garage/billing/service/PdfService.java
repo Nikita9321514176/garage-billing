@@ -181,11 +181,15 @@ public class PdfService {
         leftCell.addElement(new Paragraph(
             "Ph: " + GarageConfig.PHONE, FONT_SMALL));
 
-        // GST number — only shown if configured (you confirmed registered)
+        // GST number when configured; always show 18% GST applies
         if (GarageConfig.GST_NUMBER != null && !GarageConfig.GST_NUMBER.isEmpty()) {
             leftCell.addElement(new Paragraph(
                 "GSTIN: " + GarageConfig.GST_NUMBER, FONT_SMALL));
         }
+        leftCell.addElement(new Paragraph(
+            "GST @ " + GstCalculator.GST_RATE + "% (CGST "
+                + GstCalculator.CGST_RATE + "% + SGST "
+                + GstCalculator.SGST_RATE + "%)", FONT_SMALL));
 
         table.addCell(leftCell);
 
@@ -429,22 +433,15 @@ public class PdfService {
         BigDecimal labourTotal = sumAmounts(labourItems);
         BigDecimal partsTotal  = sumAmounts(partItems);
 
-        // Subtotal = sum of ALL services (labour + parts) before discount
-        BigDecimal subtotal = labourTotal.add(partsTotal);
-
-        BigDecimal discount = bill.getDiscountAmount() != null
-                ? bill.getDiscountAmount() : BigDecimal.ZERO;
-
-        // Taxable amount = subtotal - discount (before GST)
-        GstBreakdown gst = GstCalculator.calculate(subtotal, discount);
+        // GST breakdown — same logic as bill detail / invoice pages
+        GstBreakdown gst = billService.getGstBreakdown(bill);
+        BigDecimal subtotal = gst.getSubtotal();
+        BigDecimal discount = gst.getDiscount();
         BigDecimal taxableAmount = gst.getTaxableAmount();
         BigDecimal cgst = gst.getCgstAmount();
         BigDecimal sgst = gst.getSgstAmount();
-
-        // Grand total stored by BillService (includes 18% GST)
-        BigDecimal displayedGrandTotal = bill.getTotalAmount() != null
-                ? bill.getTotalAmount()
-                : gst.getGrandTotal();
+        BigDecimal totalGst = gst.getTotalGstAmount();
+        BigDecimal displayedGrandTotal = gst.getGrandTotal();
 
         PdfPTable wrapper = new PdfPTable(2);
         wrapper.setWidthPercentage(100);
@@ -478,14 +475,20 @@ public class PdfService {
         }
 
         addTotalRow(totalsCell, "Taxable Amount",
-            formatCurrency(taxableAmount), FONT_MUTED, FONT_MUTED);
+            formatCurrency(taxableAmount), FONT_NORMAL, FONT_NORMAL);
+
+        Font gstLabelFont = new Font(Font.HELVETICA, 9, Font.BOLD, COLOR_DARK);
+        Font gstValueFont = new Font(Font.HELVETICA, 9, Font.BOLD, COLOR_DARK);
 
         addTotalRow(totalsCell,
-            "CGST @ " + GstCalculator.CGST_RATE + "%",
-            formatCurrency(cgst), FONT_MUTED, FONT_MUTED);
+            "CGST @ " + GstCalculator.CGST_RATE.stripTrailingZeros().toPlainString() + "%",
+            formatCurrency(cgst), gstLabelFont, gstValueFont);
         addTotalRow(totalsCell,
-            "SGST @ " + GstCalculator.SGST_RATE + "%",
-            formatCurrency(sgst), FONT_MUTED, FONT_MUTED);
+            "SGST @ " + GstCalculator.SGST_RATE.stripTrailingZeros().toPlainString() + "%",
+            formatCurrency(sgst), gstLabelFont, gstValueFont);
+        addTotalRow(totalsCell,
+            "Total GST @ " + GstCalculator.GST_RATE.stripTrailingZeros().toPlainString() + "%",
+            formatCurrency(totalGst), gstLabelFont, gstValueFont);
 
         // Divider
         Paragraph sep = new Paragraph(" ",
