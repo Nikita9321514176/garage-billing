@@ -100,14 +100,7 @@ public class BillService {
     }
 
     public GstBreakdown getGstBreakdown(Bill bill) {
-        BigDecimal subtotal = BigDecimal.ZERO;
-        if (bill.getServices() != null) {
-            subtotal = bill.getServices().stream()
-                    .map(BillServiceItem::getAmount)
-                    .filter(a -> a != null)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-        }
-        return GstCalculator.calculate(subtotal, bill.getDiscountAmount());
+        return GstCalculator.resolveForBill(bill);
     }
 
     public String determineStatus(BigDecimal total, BigDecimal paid, BigDecimal balance) {
