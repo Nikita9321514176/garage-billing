@@ -10,10 +10,6 @@
     </a>
 </div>
 
-<!--
-    th:action="@{/bill/save}" — REQUIRED for Spring Security CSRF token.
-    Plain action="/bill/save" gives 403 Forbidden.
--->
 <form th:action="@{/bill/save}" method="post" id="billForm"
       onsubmit="return validateBeforeSubmit()">
 
@@ -35,34 +31,17 @@
                 <div class="mb-3">
                     <label class="form-label">Select Existing Customer</label>
 
-                    <!--
-                        existingCustomerId hidden input.
-                        When user picks from autocomplete, this gets set.
-                        When blank = new customer.
-                        BillController reads: billForm.getExistingCustomerId()
-                    -->
                     <input type="hidden"
                            id="existingCustomerId"
                            name="existingCustomerId"/>
 
                     <div class="position-relative">
-                        <!--
-                            Autocomplete text input.
-                            User types here → JS calls /customer/api/search?q=
-                            Results appear below in #customerResults dropdown.
-                            On selection: hidden input gets customer.id value.
-                        -->
                         <input type="text"
                                id="customerSearch"
                                class="form-control"
                                placeholder="Search by name or phone..."
                                autocomplete="off"/>
 
-                        <!--
-                            Results dropdown container.
-                            Populated by JS fetch() call.
-                            Hidden by default, shown when results arrive.
-                        -->
                         <div id="customerResults"
                              class="list-group position-absolute w-100 shadow"
                              style="z-index:1050;display:none;max-height:250px;overflow-y:auto;background:white;">
@@ -74,7 +53,6 @@
                     </div>
                 </div>
 
-                <!-- New customer fields — shown when no existing customer selected -->
                 <div id="newCustomerFields"
                      class="border rounded p-3 bg-light">
 
@@ -119,7 +97,6 @@
 
                     </div>
                 </div>
-                <!-- /newCustomerFields -->
 
             </div>
         </div>
@@ -137,12 +114,6 @@
                 <div class="mb-3">
                     <label class="form-label">Select Car</label>
 
-                    <!--
-                        Car dropdown.
-                        Populated server-side on page load (for pre-selected customer).
-                        Also populated via AJAX when customer is selected via search.
-                        BillController reads: billForm.getExistingCarId()
-                    -->
                     <select id="existingCarId"
                             name="existingCarId"
                             class="form-select"
@@ -161,7 +132,6 @@
                     </select>
                 </div>
 
-                <!-- New car fields — shown when "+ Register new car" selected -->
                 <div id="newCarFields"
                      style="display:none"
                      class="border rounded p-3 bg-light">
@@ -240,19 +210,18 @@
 
                     </div>
                 </div>
-                <!-- /newCarFields -->
 
             </div>
         </div>
         <!-- /CAR CARD -->
 
-        <!-- ── SERVICES CARD ───────────────────────────────── -->
-        <div class="card">
+        <!-- ── SERVICES CARD (LABOUR) ──────────────────────── -->
+        <div class="card mb-3">
 
             <div class="card-header bg-dark text-white
                         d-flex justify-content-between align-items-center">
                 <span>
-                    <i class="bi bi-tools me-2"></i>Services / Work Done
+                    <i class="bi bi-tools me-2"></i>Services / Work Done (Labour)
                 </span>
                 <button type="button"
                         class="btn btn-sm btn-success"
@@ -277,7 +246,6 @@
 
                 <div id="serviceRowsContainer">
 
-                    <!-- Default first row — delete button disabled (last row protection) -->
                     <div class="service-row mb-2" id="serviceRow_0">
                         <div class="row g-2 align-items-center">
 
@@ -321,14 +289,60 @@
 
                         </div>
                     </div>
-                    <!-- /serviceRow_0 -->
 
                 </div>
-                <!-- /serviceRowsContainer -->
 
             </div>
         </div>
         <!-- /SERVICES CARD -->
+
+        <!-- ── PARTS USED CARD ─────────────────────────────────
+             CHANGED: header color from bg-info (light blue) to
+             bg-dark (same black as Services card) per request —
+             keeps the two sections visually consistent as one
+             unified "bill items" look, distinguished only by
+             the icon and label text, not by a clashing color.
+        ──────────────────────────────────────────────────── -->
+        <div class="card">
+
+            <div class="card-header bg-dark text-white
+                        d-flex justify-content-between align-items-center">
+                <span>
+                    <i class="bi bi-gear-wide-connected me-2"></i>Parts Used
+                </span>
+                <button type="button"
+                        class="btn btn-sm btn-success"
+                        onclick="addPartRow()">
+                    <i class="bi bi-plus-lg me-1"></i>Add Part
+                </button>
+            </div>
+
+            <div class="card-body">
+
+                <div class="row g-2 mb-2 d-none d-md-flex">
+                    <div class="col-md-4">
+                        <small class="text-muted fw-semibold">PART NAME *</small>
+                    </div>
+                    <div class="col-md-2">
+                        <small class="text-muted fw-semibold">QTY *</small>
+                    </div>
+                    <div class="col-md-3">
+                        <small class="text-muted fw-semibold">UNIT PRICE *</small>
+                    </div>
+                    <div class="col-md-2">
+                        <small class="text-muted fw-semibold">AMOUNT</small>
+                    </div>
+                </div>
+
+                <div id="partRowsContainer"></div>
+
+                <p id="noPartsMessage" class="text-muted small mb-0 mt-1">
+                    <i class="bi bi-info-circle me-1"></i>No parts added. Click "Add Part" if any parts were used.
+                </p>
+
+            </div>
+        </div>
+        <!-- /PARTS USED CARD -->
 
     </div>
     <!-- /LEFT COLUMN -->
@@ -356,7 +370,15 @@
 
                 <input type="hidden" id="totalAmountHidden" name="totalAmount" value="0"/>
 
-                <!-- Discount -->
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="text-muted small">Labour Total</span>
+                    <span id="labourTotalDisplay" class="small">&#8377;0.00</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                    <span class="text-muted small">Parts Total</span>
+                    <span id="partsTotalDisplay" class="small">&#8377;0.00</span>
+                </div>
+
                 <div class="mb-2">
                     <label class="form-label">
                         Discount <span class="text-muted small">(in ₹, optional)</span>
@@ -375,19 +397,12 @@
                     </div>
                 </div>
 
-                <!-- Subtotal line -->
                 <div class="d-flex justify-content-between align-items-center mb-1">
                     <span class="text-muted small">Subtotal</span>
                     <span id="subtotalDisplay" class="small">&#8377;0.00</span>
                 </div>
 
-                <!-- Discount applied line — hidden until discount > 0 -->
-                <!--
-                    CRITICAL: NO !important here.
-                    style="display:none" can be overridden by JS.
-                    style="display:none !important" CANNOT be overridden by JS.
-                -->
-                <div class="d-flex justify-content-between align-items-center mb-2"
+                <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom"
                      id="discountRow"
                      style="display:none">
                     <span class="text-muted small">Discount Applied</span>
@@ -410,14 +425,8 @@
                     <span id="sgstDisplay" class="small">&#8377;0.00</span>
                 </div>
 
-                <!-- ── PAYMENT DETAILS BOX ─────────────────────────
-                     Always visible. Payment Mode and Reference are
-                     always shown so owner never misses them.
-                     JS still validates mode is selected before save.
-                ────────────────────────────────────────────────── -->
                 <div class="border rounded p-2 mb-3 bg-light">
 
-                    <!-- Amount Received -->
                     <div class="mb-2">
                         <label class="form-label fw-semibold mb-1">
                             <i class="bi bi-cash-coin me-1 text-success"></i>
@@ -438,7 +447,6 @@
                         <div class="form-text">Enter 0 if no payment today</div>
                     </div>
 
-                    <!-- Payment Mode — ALWAYS VISIBLE -->
                     <div class="mb-2" id="paymentModeSection">
                         <label class="form-label mb-1">
                             Payment Mode
@@ -457,7 +465,6 @@
                         </select>
                     </div>
 
-                    <!-- Transaction Reference — ALWAYS VISIBLE -->
                     <div id="paymentRefSection">
                         <label class="form-label mb-1">
                             Transaction Reference
@@ -470,9 +477,7 @@
                     </div>
 
                 </div>
-                <!-- /PAYMENT DETAILS BOX -->
 
-                <!-- Balance Due -->
                 <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
                     <span class="fw-semibold">Balance Due</span>
                     <span id="balanceDisplay" class="fw-bold fs-5 text-danger">
@@ -480,19 +485,16 @@
                     </span>
                 </div>
 
-                <!-- Payment Status -->
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <span class="text-muted">Payment Status</span>
                     <span id="statusPreview" class="badge badge-pending">PENDING</span>
                 </div>
 
-                <!-- Due Date -->
                 <div class="mb-3">
                     <label class="form-label">Payment Due Date</label>
                     <input type="date" name="dueDate" class="form-control form-control-sm"/>
                 </div>
 
-                <!-- Notes -->
                 <div class="mb-3">
                     <label class="form-label">Notes</label>
                     <textarea name="notes"
@@ -523,53 +525,43 @@
 </div>
 </form>
 
-<!-- ════════════════════════════════════════════════════════════
-     PAGE SCRIPT
-     ════════════════════════════════════════════════════════════
-
-     ALL JS IS IN ONE SINGLE DOMContentLoaded block.
-     Previously there were TWO DOMContentLoaded blocks which
-     caused a syntax error that silently broke ALL JavaScript.
-
-     FUNCTIONS DEFINED HERE:
-     1. calculateTotal()        — was missing, bill summary showed ₹0.00 always
-     2. addServiceRow()         — was missing, Add Service button did nothing
-     3. removeRow()             — was missing, trash button did nothing
-     4. updateDeleteButtons()   — helper for row management
-     5. loadCarsForCustomer()   — URL fixed: was /car/customer/{id}
-                                            now /bill/api/customers/{id}/cars
-     6. handleCarChange()       — preserved from original, unchanged
-     7. validateBeforeSubmit()  — prevents saving empty/invalid forms
-     8. Customer autocomplete   — preserved from original, URL was already correct
-════════════════════════════════════════════════════════════ -->
 <script th:inline="javascript">
 /*<![CDATA[*/
-
-// Thymeleaf injects these server-side values at render time
 var preselectedCustomerId = /*[[${preselectedCustomerId}]]*/ null;
 var preselectedCarId      = /*[[${preselectedCarId}]]*/ null;
 /*]]>*/
 </script>
 
-<!-- All functions in plain script block — no Thymeleaf parsing, safe for < > operators -->
+<!--
+    ════════════════════════════════════════════════════════════
+    ROOT CAUSE FIX — bill.js (loaded in base.html, AFTER this
+    fragment) defines its OWN calculateTotal() that knows nothing
+    about Parts rows. Whichever script runs LAST wins, and since
+    bill.js loads after this inline page script in document order,
+    bill.js's version was overwriting ours — that's why Labour
+    Total / Parts Total always showed ₹0 and Total Amount only
+    counted services.
+
+    THE FIX: exactly the same pattern already used successfully
+    in edit.html — wrap our real calculateTotal() definition in
+    window.addEventListener('load', ...). The 'load' event fires
+    only after EVERY script on the page (including bill.js) has
+    finished executing, so our version is guaranteed to run last
+    and become the version actually used by all oninput="" calls.
+    ════════════════════════════════════════════════════════════
+-->
 <script>
 
 // Global row index — NEVER resets, NEVER reuses values.
-// Even if row 1 is deleted, next new row gets index 2, not 1.
-// This prevents Spring from seeing duplicate services[1] on submit.
 var rowIndex = 1;
 
-// Debounce timer for customer search (avoids API call on every keystroke)
+// Global row index for PARTS — separate counter.
+var partRowIndex = 0;
+
 var searchTimer = null;
 
-// ════════════════════════════════════════════════════════════
-// DOMContentLoaded — runs ONCE when page is ready.
-// There is ONLY ONE of these. Previously having two caused
-// a JS syntax error that broke everything silently.
-// ════════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', function () {
 
-    // ── Pre-selected customer (e.g. from customer detail page) ──
     if (preselectedCustomerId) {
         document.getElementById('existingCustomerId').value = preselectedCustomerId;
         document.getElementById('newCustomerFields').style.display = 'none';
@@ -578,7 +570,6 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('newCustomerFields').style.display = 'block';
     }
 
-    // ── Pre-selected car (e.g. from search page) ────────────────
     if (preselectedCarId) {
         var carSel = document.getElementById('existingCarId');
         if (carSel) {
@@ -587,13 +578,11 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // ── Wire up customer autocomplete search ────────────────────
     var customerSearchInput = document.getElementById('customerSearch');
     if (customerSearchInput) {
         customerSearchInput.addEventListener('input', handleCustomerSearchInput);
     }
 
-    // ── Close autocomplete dropdown when clicking outside ───────
     document.addEventListener('click', function (e) {
         var searchInput  = document.getElementById('customerSearch');
         var resultsBox   = document.getElementById('customerResults');
@@ -603,194 +592,320 @@ document.addEventListener('DOMContentLoaded', function () {
             resultsBox.style.display = 'none';
         }
     });
+});
 
-    // ── Initial calculation (sets all displays to ₹0.00) ────────
+
+// ════════════════════════════════════════════════════════════
+// window 'load' — fires AFTER bill.js has fully loaded and
+// defined its own calculateTotal(). We override it here so
+// OUR version (which knows about Parts) is what actually runs.
+// ════════════════════════════════════════════════════════════
+window.addEventListener('load', function () {
+
+    // ── CRITICAL FIX ──────────────────────────────────────────
+    // ROOT CAUSE OF THE BUG: bill.js's own DOMContentLoaded
+    // handler runs addEventListener('input', calculateTotal) on
+    // the #discountAmount and #initialPayment fields. That call
+    // captures a DIRECT REFERENCE to bill.js's OLD calculateTotal
+    // (labour-only, no parts) at the moment it ran — reassigning
+    // the global `calculateTotal` variable below does NOT change
+    // what that already-attached listener calls.
+    //
+    // Meanwhile the inline oninput="calculateTotal()" HTML
+    // attribute looks up the function BY NAME every time it
+    // fires, so it always calls our new override correctly.
+    //
+    // Result: BOTH listeners fire on every keystroke in the
+    // discount/payment fields — ours (correct, labour+parts)
+    // runs, then bill.js's stale one (labour-only) runs right
+    // after and overwrites the display with wrong numbers.
+    // That's why discount briefly shows correct totals, then
+    // visibly "snaps back" to a labour-only calculation.
+    //
+    // THE FIX: clone the discount and payment inputs to strip
+    // ALL addEventListener bindings (cloneNode does not copy
+    // JS event listeners, only HTML attributes — so the inline
+    // oninput="" attribute survives, but bill.js's separately
+    // attached listener is gone). Replace the original elements
+    // with the clones. Zero visual or functional change for the
+    // user — purely removes the duplicate stale listener.
+    ['discountAmount', 'initialPayment'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) {
+            var clone = el.cloneNode(true);
+            el.parentNode.replaceChild(clone, el);
+        }
+    });
+
+    // ── OVERRIDE: calculateTotal() ───────────────────────────
+    // Sums BOTH labour (.amount-input) and parts (qty*unitPrice
+    // computed live from .part-qty-input / .part-price-input).
+    calculateTotal = function () {
+
+        var labourInputs = document.querySelectorAll('.amount-input');
+        var labourTotal  = 0;
+        labourInputs.forEach(function (inp) {
+            var v = parseFloat(inp.value) || 0;
+            if (v < 0) v = 0;
+            labourTotal += v;
+        });
+
+        var partRows   = document.querySelectorAll('.part-row');
+        var partsTotal = 0;
+        partRows.forEach(function (row) {
+            var qtyEl   = row.querySelector('.part-qty-input');
+            var priceEl = row.querySelector('.part-price-input');
+            var qty     = parseFloat(qtyEl   ? qtyEl.value   : 0) || 0;
+            var price   = parseFloat(priceEl ? priceEl.value : 0) || 0;
+            if (qty < 0) qty = 0;
+            if (price < 0) price = 0;
+            partsTotal += (qty * price);
+        });
+
+        var rawTotal = labourTotal + partsTotal;
+
+        var discEl   = document.getElementById('discountAmount');
+        var discount = parseFloat(discEl ? discEl.value : 0) || 0;
+        if (discount < 0)        discount = 0;
+        if (discount > rawTotal) discount = rawTotal;
+
+        var taxable = Math.round((rawTotal - discount) * 100) / 100;
+        var cgst = Math.round(taxable * 0.09 * 100) / 100;
+        var sgst = Math.round(taxable * 0.09 * 100) / 100;
+        var grandTotal = Math.round((taxable + cgst + sgst) * 100) / 100;
+
+        var payEl  = document.getElementById('initialPayment');
+        var payNow = parseFloat(payEl ? payEl.value : 0) || 0;
+        if (payNow < 0)        payNow = 0;
+        if (payNow > grandTotal) {
+            payNow = grandTotal;
+            if (payEl) payEl.value = grandTotal.toFixed(2);
+        }
+
+        var balance = grandTotal - payNow;
+        if (balance < 0) balance = 0;
+
+        var status;
+        if (grandTotal > 0 && balance === 0)        status = 'PAID';
+        else if (payNow > 0 && balance > 0)       status = 'PARTIAL';
+        else                                       status = 'PENDING';
+
+        var totalDisp = document.getElementById('totalAmountDisplay');
+        if (totalDisp) totalDisp.textContent = '₹' + grandTotal.toFixed(2);
+
+        var totalHid = document.getElementById('totalAmountHidden');
+        if (totalHid) totalHid.value = grandTotal.toFixed(2);
+
+        var labourDisp = document.getElementById('labourTotalDisplay');
+        if (labourDisp) labourDisp.textContent = '₹' + labourTotal.toFixed(2);
+
+        var partsDisp = document.getElementById('partsTotalDisplay');
+        if (partsDisp) partsDisp.textContent = '₹' + partsTotal.toFixed(2);
+
+        var subDisp = document.getElementById('subtotalDisplay');
+        if (subDisp) subDisp.textContent = '₹' + rawTotal.toFixed(2);
+
+        var taxableDisp = document.getElementById('taxableDisplay');
+        if (taxableDisp) taxableDisp.textContent = '₹' + taxable.toFixed(2);
+
+        var cgstDisp = document.getElementById('cgstDisplay');
+        if (cgstDisp) cgstDisp.textContent = '₹' + cgst.toFixed(2);
+
+        var sgstDisp = document.getElementById('sgstDisplay');
+        if (sgstDisp) sgstDisp.textContent = '₹' + sgst.toFixed(2);
+
+        var discRow  = document.getElementById('discountRow');
+        var discDisp = document.getElementById('discountDisplay');
+        if (discRow) {
+            discRow.style.display = discount > 0 ? 'flex' : 'none';
+            if (discDisp) discDisp.textContent = '- ₹' + discount.toFixed(2);
+        }
+
+        var balEl = document.getElementById('balanceDisplay');
+        if (balEl) {
+            balEl.textContent = '₹' + balance.toFixed(2);
+            balEl.className   = balance === 0
+                ? 'fw-bold fs-5 text-success'
+                : 'fw-bold fs-5 text-danger';
+        }
+
+        var statusEl = document.getElementById('statusPreview');
+        if (statusEl) {
+            statusEl.textContent = status;
+            statusEl.className   = 'badge fs-6 badge-' + status.toLowerCase();
+        }
+    };
+
+    // ── OVERRIDE: addServiceRow() ────────────────────────────
+    addServiceRow = function () {
+
+        var container = document.getElementById('serviceRowsContainer');
+        var idx = rowIndex;
+
+        var html =
+            '<div class="service-row mb-2" id="serviceRow_' + idx + '">' +
+                '<div class="row g-2 align-items-center">' +
+                    '<div class="col-md-4">' +
+                        '<input type="text"' +
+                               ' name="services[' + idx + '].serviceName"' +
+                               ' class="form-control form-control-sm"' +
+                               ' placeholder="e.g. Brake Pads"' +
+                               ' required/>' +
+                    '</div>' +
+                    '<div class="col-md-4">' +
+                        '<input type="text"' +
+                               ' name="services[' + idx + '].description"' +
+                               ' class="form-control form-control-sm"' +
+                               ' placeholder="Description (optional)"/>' +
+                    '</div>' +
+                    '<div class="col-md-3">' +
+                        '<div class="input-group input-group-sm">' +
+                            '<span class="input-group-text">&#8377;</span>' +
+                            '<input type="number"' +
+                                   ' name="services[' + idx + '].amount"' +
+                                   ' class="form-control form-control-sm amount-input"' +
+                                   ' placeholder="0.00"' +
+                                   ' min="0" step="0.01"' +
+                                   ' oninput="calculateTotal()"/>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="col-md-1 text-center">' +
+                        '<button type="button"' +
+                                ' class="btn btn-outline-danger btn-sm"' +
+                                ' onclick="removeRow(\'serviceRow_' + idx + '\')"' +
+                                ' title="Remove this service">' +
+                            '<i class="bi bi-trash"></i>' +
+                        '</button>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+
+        container.insertAdjacentHTML('beforeend', html);
+        rowIndex++;
+
+        updateDeleteButtons();
+
+        var newRow = document.getElementById('serviceRow_' + idx);
+        if (newRow) {
+            var nameInput = newRow.querySelector('input[type="text"]');
+            if (nameInput) nameInput.focus();
+        }
+
+        calculateTotal();
+    };
+
+    // ── NEW: addPartRow() ─────────────────────────────────────
+    addPartRow = function () {
+
+        var container = document.getElementById('partRowsContainer');
+        var idx = partRowIndex;
+
+        var html =
+            '<div class="part-row mb-2" id="partRow_' + idx + '">' +
+                '<div class="row g-2 align-items-center">' +
+                    '<div class="col-md-4">' +
+                        '<input type="text"' +
+                               ' name="parts[' + idx + '].partName"' +
+                               ' class="form-control form-control-sm"' +
+                               ' placeholder="e.g. Brake Pad Set"/>' +
+                    '</div>' +
+                    '<div class="col-md-2">' +
+                        '<input type="number"' +
+                               ' name="parts[' + idx + '].qty"' +
+                               ' class="form-control form-control-sm part-qty-input"' +
+                               ' placeholder="1"' +
+                               ' min="0" step="1"' +
+                               ' oninput="calculatePartAmount(\'partRow_' + idx + '\'); calculateTotal();"/>' +
+                    '</div>' +
+                    '<div class="col-md-3">' +
+                        '<div class="input-group input-group-sm">' +
+                            '<span class="input-group-text">&#8377;</span>' +
+                            '<input type="number"' +
+                                   ' name="parts[' + idx + '].unitPrice"' +
+                                   ' class="form-control form-control-sm part-price-input"' +
+                                   ' placeholder="0.00"' +
+                                   ' min="0" step="0.01"' +
+                                   ' oninput="calculatePartAmount(\'partRow_' + idx + '\'); calculateTotal();"/>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="col-md-2">' +
+                        '<div class="input-group input-group-sm">' +
+                            '<span class="input-group-text">&#8377;</span>' +
+                            '<input type="text"' +
+                                   ' class="form-control form-control-sm part-amount-display"' +
+                                   ' value="0.00" readonly' +
+                                   ' style="background:#f8f9fa"/>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="col-md-1 text-center">' +
+                        '<button type="button"' +
+                                ' class="btn btn-outline-danger btn-sm"' +
+                                ' onclick="removePartRow(\'partRow_' + idx + '\')"' +
+                                ' title="Remove this part">' +
+                            '<i class="bi bi-trash"></i>' +
+                        '</button>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+
+        container.insertAdjacentHTML('beforeend', html);
+        partRowIndex++;
+
+        var msg = document.getElementById('noPartsMessage');
+        if (msg) msg.style.display = 'none';
+
+        var newRow = document.getElementById('partRow_' + idx);
+        if (newRow) {
+            var nameInput = newRow.querySelector('input[type="text"]');
+            if (nameInput) nameInput.focus();
+        }
+
+        calculateTotal();
+    };
+
+    // ── NEW: removePartRow() ──────────────────────────────────
+    removePartRow = function (rowId) {
+
+        var row = document.getElementById(rowId);
+        if (row) row.remove();
+
+        var container = document.getElementById('partRowsContainer');
+        var msg = document.getElementById('noPartsMessage');
+        if (container && msg) {
+            msg.style.display = container.children.length === 0 ? 'block' : 'none';
+        }
+
+        calculateTotal();
+    };
+
+    // ── NEW: calculatePartAmount() ────────────────────────────
+    calculatePartAmount = function (rowId) {
+
+        var row = document.getElementById(rowId);
+        if (!row) return;
+
+        var qtyEl   = row.querySelector('.part-qty-input');
+        var priceEl = row.querySelector('.part-price-input');
+        var dispEl  = row.querySelector('.part-amount-display');
+
+        var qty   = parseFloat(qtyEl   ? qtyEl.value   : 0) || 0;
+        var price = parseFloat(priceEl ? priceEl.value : 0) || 0;
+        if (qty < 0) qty = 0;
+        if (price < 0) price = 0;
+
+        var amount = qty * price;
+        if (dispEl) dispEl.value = amount.toFixed(2);
+    };
+
+    // Run once now that the correct calculateTotal is in place
     calculateTotal();
 });
 
 
 // ════════════════════════════════════════════════════════════
-// calculateTotal()
-//
-// Was MISSING entirely from the previous version.
-// Called by: oninput on every amount-input, discount, payment fields.
-//
-// LOGIC:
-//   rawTotal  = sum of all service .amount-input values
-//   discount  = value from #discountAmount input
-//   subtotal  = rawTotal - discount
-//   payNow    = value from #initialPayment
-//   balance   = subtotal - payNow
-//   status    = PAID / PARTIAL / PENDING based on balance + payNow
-// ════════════════════════════════════════════════════════════
-function calculateTotal() {
-
-    // Sum every input with class="amount-input" (all service rows)
-    var inputs   = document.querySelectorAll('.amount-input');
-    var rawTotal = 0;
-    inputs.forEach(function (inp) {
-        var v = parseFloat(inp.value) || 0;
-        if (v < 0) v = 0;
-        rawTotal += v;
-    });
-
-    // Subtotal = rawTotal - discount, then add 18% GST (9% CGST + 9% SGST)
-    var discount = parseFloat(discEl ? discEl.value : 0) || 0;
-    if (discount < 0)        discount = 0;
-    if (discount > rawTotal) discount = rawTotal;
-
-    var taxable = Math.round((rawTotal - discount) * 100) / 100;
-    var cgst = Math.round(taxable * 0.09 * 100) / 100;
-    var sgst = Math.round(taxable * 0.09 * 100) / 100;
-    var subtotal = Math.round((taxable + cgst + sgst) * 100) / 100;
-
-    // Payment received now
-    var payEl  = document.getElementById('initialPayment');
-    var payNow = parseFloat(payEl ? payEl.value : 0) || 0;
-    if (payNow < 0)        payNow = 0;
-    if (payNow > subtotal) {
-        payNow = subtotal;
-        if (payEl) payEl.value = subtotal.toFixed(2);
-    }
-
-    // Balance
-    var balance = subtotal - payNow;
-    if (balance < 0) balance = 0;
-
-    // Status
-    var status;
-    if (subtotal > 0 && balance === 0)        status = 'PAID';
-    else if (payNow > 0 && balance > 0)       status = 'PARTIAL';
-    else                                       status = 'PENDING';
-
-    // ── Update display elements ──────────────────────────────────
-
-    var totalDisp = document.getElementById('totalAmountDisplay');
-    if (totalDisp) totalDisp.textContent = '₹' + subtotal.toFixed(2);
-
-    var totalHid = document.getElementById('totalAmountHidden');
-    if (totalHid) totalHid.value = subtotal.toFixed(2);
-
-    var subDisp = document.getElementById('subtotalDisplay');
-    if (subDisp) subDisp.textContent = '₹' + rawTotal.toFixed(2);
-
-    var taxableDisp = document.getElementById('taxableDisplay');
-    if (taxableDisp) taxableDisp.textContent = '₹' + taxable.toFixed(2);
-
-    var cgstDisp = document.getElementById('cgstDisplay');
-    if (cgstDisp) cgstDisp.textContent = '₹' + cgst.toFixed(2);
-
-    var sgstDisp = document.getElementById('sgstDisplay');
-    if (sgstDisp) sgstDisp.textContent = '₹' + sgst.toFixed(2);
-
-    // Discount row: show only when discount > 0
-    var discRow  = document.getElementById('discountRow');
-    var discDisp = document.getElementById('discountDisplay');
-    if (discRow) {
-        discRow.style.display = discount > 0 ? 'flex' : 'none';
-        if (discDisp) discDisp.textContent = '- ₹' + discount.toFixed(2);
-    }
-
-    // Balance — green when zero, red when owing
-    var balEl = document.getElementById('balanceDisplay');
-    if (balEl) {
-        balEl.textContent = '₹' + balance.toFixed(2);
-        balEl.className   = balance === 0
-            ? 'fw-bold fs-5 text-success'
-            : 'fw-bold fs-5 text-danger';
-    }
-
-    // Status badge
-    var statusEl = document.getElementById('statusPreview');
-    if (statusEl) {
-        statusEl.textContent = status;
-        statusEl.className   = 'badge fs-6 badge-' + status.toLowerCase();
-    }
-
-    // Payment mode + ref sections are always visible now.
-    // No show/hide needed — they live inside the payment box permanently.
-    // Validation in validateBeforeSubmit() enforces mode selection when payNow > 0.
-}
-
-
-// ════════════════════════════════════════════════════════════
-// addServiceRow()
-//
-// Was MISSING entirely. "Add Service" button called this
-// function but it was never defined → silent fail.
-//
-// Uses always-incrementing rowIndex so Spring never sees
-// duplicate services[N] keys even after deletions.
-// ════════════════════════════════════════════════════════════
-function addServiceRow() {
-
-    var container = document.getElementById('serviceRowsContainer');
-    var idx = rowIndex; // capture before incrementing
-
-    var html =
-        '<div class="service-row mb-2" id="serviceRow_' + idx + '">' +
-            '<div class="row g-2 align-items-center">' +
-
-                '<div class="col-md-4">' +
-                    '<input type="text"' +
-                           ' name="services[' + idx + '].serviceName"' +
-                           ' class="form-control form-control-sm"' +
-                           ' placeholder="e.g. Brake Pads"' +
-                           ' required/>' +
-                '</div>' +
-
-                '<div class="col-md-4">' +
-                    '<input type="text"' +
-                           ' name="services[' + idx + '].description"' +
-                           ' class="form-control form-control-sm"' +
-                           ' placeholder="Description (optional)"/>' +
-                '</div>' +
-
-                '<div class="col-md-3">' +
-                    '<div class="input-group input-group-sm">' +
-                        '<span class="input-group-text">&#8377;</span>' +
-                        '<input type="number"' +
-                               ' name="services[' + idx + '].amount"' +
-                               ' class="form-control form-control-sm amount-input"' +
-                               ' placeholder="0.00"' +
-                               ' min="0" step="0.01"' +
-                               ' oninput="calculateTotal()"/>' +
-                    '</div>' +
-                '</div>' +
-
-                '<div class="col-md-1 text-center">' +
-                    '<button type="button"' +
-                            ' class="btn btn-outline-danger btn-sm"' +
-                            ' onclick="removeRow(\'serviceRow_' + idx + '\')"' +
-                            ' title="Remove this service">' +
-                        '<i class="bi bi-trash"></i>' +
-                    '</button>' +
-                '</div>' +
-
-            '</div>' +
-        '</div>';
-
-    container.insertAdjacentHTML('beforeend', html);
-    rowIndex++; // increment AFTER capturing idx
-
-    updateDeleteButtons();
-
-    // Focus the new service name input
-    var newRow = document.getElementById('serviceRow_' + idx);
-    if (newRow) {
-        var nameInput = newRow.querySelector('input[type="text"]');
-        if (nameInput) nameInput.focus();
-    }
-
-    calculateTotal();
-}
-
-
-// ════════════════════════════════════════════════════════════
-// removeRow(rowId)
-//
-// Was MISSING entirely. Trash buttons called this function
-// but it was never defined → silent fail.
+// removeRow(rowId) — LABOUR rows. Defined globally (not inside
+// the load handler) because it must exist even if called before
+// 'load' fires — though in practice this is always after.
 // ════════════════════════════════════════════════════════════
 function removeRow(rowId) {
 
@@ -805,15 +920,10 @@ function removeRow(rowId) {
     if (row) row.remove();
 
     updateDeleteButtons();
-    calculateTotal();
+    if (typeof calculateTotal === 'function') calculateTotal();
 }
 
 
-// ─────────────────────────────────────────────────────────────
-// updateDeleteButtons()
-// Disables trash button when only 1 row remains (can't delete last row).
-// Re-enables all buttons when 2+ rows exist.
-// ─────────────────────────────────────────────────────────────
 function updateDeleteButtons() {
 
     var allRows = document.querySelectorAll('.service-row');
@@ -825,14 +935,6 @@ function updateDeleteButtons() {
 }
 
 
-// ════════════════════════════════════════════════════════════
-// loadCarsForCustomer(customerId)
-//
-// FIX: URL was "/car/customer/{id}" — no such endpoint exists.
-//      BillController has: @GetMapping("/api/customers/{customerId}/cars")
-//      with @RequestMapping("/bill") on the class.
-//      Correct URL = /bill/api/customers/{id}/cars
-// ════════════════════════════════════════════════════════════
 function loadCarsForCustomer(customerId) {
 
     if (!customerId || customerId === '' || customerId === '0') return;
@@ -842,7 +944,6 @@ function loadCarsForCustomer(customerId) {
 
     carSelect.innerHTML = '<option value="">Loading cars...</option>';
 
-    // CORRECTED URL — matches BillController @GetMapping("/api/customers/{customerId}/cars")
     fetch('/bill/api/customers/' + customerId + '/cars')
         .then(function (res) {
             if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -867,7 +968,6 @@ function loadCarsForCustomer(customerId) {
 
             carSelect.innerHTML = options;
 
-            // Apply pre-selected car if coming from another page
             if (preselectedCarId) {
                 carSelect.value = String(preselectedCarId);
                 handleCarChange(carSelect.value);
@@ -882,10 +982,6 @@ function loadCarsForCustomer(customerId) {
 }
 
 
-// ─────────────────────────────────────────────────────────────
-// handleCarChange(value)
-// Shows/hides new car fields when "+ Register new car" is selected.
-// ─────────────────────────────────────────────────────────────
 function handleCarChange(value) {
 
     var newCarFields = document.getElementById('newCarFields');
@@ -900,18 +996,6 @@ function handleCarChange(value) {
 }
 
 
-// ════════════════════════════════════════════════════════════
-// CUSTOMER AUTOCOMPLETE SEARCH
-//
-// Called on every keystroke in #customerSearch input.
-// Waits 300ms after typing stops (debounce) then calls:
-//   GET /customer/api/search?q=keyword
-//   → CustomerController @GetMapping("/api/search")
-//   → Returns List<Customer> as JSON
-//
-// URL /customer/api/search is CORRECT — CustomerController
-// has @RequestMapping("/customer") + @GetMapping("/api/search")
-// ════════════════════════════════════════════════════════════
 function handleCustomerSearchInput() {
 
     var keyword = this.value.trim();
@@ -919,10 +1003,8 @@ function handleCustomerSearchInput() {
     var hiddenIdField  = document.getElementById('existingCustomerId');
     var newCustFields  = document.getElementById('newCustomerFields');
 
-    // Clear any previously selected customer when user starts typing again
     hiddenIdField.value = '';
 
-    // If less than 2 chars typed: hide dropdown, show new customer form
     if (keyword.length < 2) {
         resultsBox.style.display  = 'none';
         resultsBox.innerHTML      = '';
@@ -930,12 +1012,10 @@ function handleCustomerSearchInput() {
         return;
     }
 
-    // Debounce: cancel previous timer, start new 300ms timer
     clearTimeout(searchTimer);
 
     searchTimer = setTimeout(function () {
 
-        // URL is correct: CustomerController handles /customer/api/search
         fetch('/customer/api/search?q=' + encodeURIComponent(keyword))
             .then(function (res) {
                 if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -946,7 +1026,6 @@ function handleCustomerSearchInput() {
                 resultsBox.innerHTML = '';
 
                 if (!customers || customers.length === 0) {
-                    // No match — show "not found" message and keep new customer form visible
                     resultsBox.innerHTML =
                         '<div class="list-group-item text-muted small py-2">' +
                             '<i class="bi bi-person-x me-1"></i>' +
@@ -957,7 +1036,6 @@ function handleCustomerSearchInput() {
                     return;
                 }
 
-                // Build result items
                 customers.forEach(function (customer) {
 
                     var item = document.createElement('button');
@@ -983,47 +1061,29 @@ function handleCustomerSearchInput() {
                 resultsBox.style.display = 'none';
             });
 
-    }, 300); // wait 300ms after last keystroke
+    }, 300);
 }
 
 
-// ─────────────────────────────────────────────────────────────
-// onCustomerSelected(customer)
-// Called when user clicks a result in the autocomplete dropdown.
-// 1. Fills the search box with customer name + phone
-// 2. Sets the hidden existingCustomerId field
-// 3. Hides new customer fields (not needed for existing customer)
-// 4. Loads their cars into the car dropdown via AJAX
-// ─────────────────────────────────────────────────────────────
 function onCustomerSelected(customer) {
 
-    // Show selected customer in the search box
     var searchInput = document.getElementById('customerSearch');
     searchInput.value = customer.name + ' (' + customer.phone + ')';
 
-    // Set the hidden field that the controller reads
     document.getElementById('existingCustomerId').value = customer.id;
 
-    // Hide dropdown
     var resultsBox = document.getElementById('customerResults');
     resultsBox.innerHTML      = '';
     resultsBox.style.display  = 'none';
 
-    // Hide new customer fields — we have an existing customer
     document.getElementById('newCustomerFields').style.display = 'none';
 
-    // Load this customer's cars
     loadCarsForCustomer(customer.id);
 }
 
 
-// ─────────────────────────────────────────────────────────────
-// validateBeforeSubmit()
-// Called by form's onsubmit. Returns false to block submit if invalid.
-// ─────────────────────────────────────────────────────────────
 function validateBeforeSubmit() {
 
-    // Must have at least one service with a name
     var serviceNames = document.querySelectorAll('[name$=".serviceName"]');
     var hasService   = false;
     serviceNames.forEach(function (inp) {
@@ -1034,7 +1094,6 @@ function validateBeforeSubmit() {
         return false;
     }
 
-    // If payment > 0, payment mode must be selected
     var payNow = parseFloat(document.getElementById('initialPayment').value) || 0;
     if (payNow > 0) {
         var modeSelect = document.getElementById('initialPaymentMode');
@@ -1045,7 +1104,6 @@ function validateBeforeSubmit() {
         }
     }
 
-    // If new customer, name + phone required
     var custId = document.getElementById('existingCustomerId').value;
     if (!custId || custId === '') {
         var nameInp  = document.getElementById('customerNameInput');
@@ -1062,7 +1120,6 @@ function validateBeforeSubmit() {
         }
     }
 
-    // Prevent double-submit
     var btn = document.getElementById('saveBillBtn');
     if (btn) {
         btn.disabled  = true;
@@ -1073,15 +1130,8 @@ function validateBeforeSubmit() {
 }
 
 
-// ─────────────────────────────────────────────────────────────
-// escapeHtml(str)
-// Prevents XSS when inserting customer names into innerHTML.
-// e.g. prevents XSS injection from customer name fields.
-// ─────────────────────────────────────────────────────────────
 function escapeHtml(str) {
     if (!str) return '';
-    // Thymeleaf parses angle brackets as HTML even inside CDATA.
-    // Using DOM method instead of regex is 100% safe.
     var div = document.createElement('div');
     div.appendChild(document.createTextNode(str));
     return div.innerHTML;

@@ -4,7 +4,6 @@ import com.garage.billing.model.Bill;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 
@@ -19,14 +18,35 @@ public class WhatsAppService {
     private String baseUrl;
 
     // ─────────────────────────────────────────────────────
-    // BUILD WHATSAPP MESSAGE WITH PUBLIC INVOICE LINK
+    // BUILD WHATSAPP MESSAGE WITH DIRECT PDF LINK
+    //
+    // CHANGED: link now points to /invoice/{billNumber}/pdf
+    // instead of /invoice/{billNumber}.
+    //
+    // OLD behavior: link opened the HTML preview page first
+    // (invoice_view.html), customer had to click "Download
+    // PDF Invoice" on that page to get the actual PDF — two
+    // clicks, two page loads, and the HTML preview's styling
+    // looked similar enough to the PDF that it felt like a
+    // confusing duplicate document.
+    //
+    // NEW behavior: link goes straight to the PDF endpoint.
+    // One click, one document, no intermediate page. This
+    // matches the real-world pattern most garages/workshops
+    // use — customer taps the WhatsApp link and the invoice
+    // PDF opens immediately in their phone's browser/PDF viewer.
+    //
+    // The HTML preview page (InvoiceController.viewPublicInvoice,
+    // invoice_view.html) still exists and still works if you
+    // ever want to link to it from somewhere else (e.g. a
+    // "View Invoice Online" button elsewhere in the app) — it
+    // is simply no longer the link sent via WhatsApp.
     // ─────────────────────────────────────────────────────
     public String buildBillMessage(Bill bill) {
 
-        // Public invoice URL — customer opens this without login
-        String invoiceUrl = baseUrl + "/invoice/" + bill.getBillNumber();
+        // CHANGED: /pdf suffix added — direct PDF link, no HTML page
+        String invoiceUrl = baseUrl + "/invoice/" + bill.getBillNumber() + "/pdf";
 
-        // Customer first name only (friendlier)
         String customerName = bill.getCustomerName() != null
                 ? bill.getCustomerName().split(" ")[0]
                 : "Customer";
@@ -41,7 +61,7 @@ public class WhatsAppService {
     }
 
     // ─────────────────────────────────────────────────────
-    // BUILD wa.me URL (opens WhatsApp with message)
+    // BUILD wa.me URL (opens WhatsApp with message) — unchanged
     // ─────────────────────────────────────────────────────
     public String buildBillUrl(Bill bill) {
         String phone = bill.getCustomerPhone();
@@ -50,11 +70,9 @@ public class WhatsAppService {
     }
 
     public String buildWaUrl(String phone, String message) {
-        // Clean phone: remove spaces, dashes, +
         String cleanPhone = phone != null
                 ? phone.replaceAll("[^0-9]", "") : "";
 
-        // Add India country code if not present
         if (cleanPhone.length() == 10) {
             cleanPhone = "91" + cleanPhone;
         }

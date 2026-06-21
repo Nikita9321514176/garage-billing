@@ -25,11 +25,11 @@ import java.util.Optional;
 @RequestMapping("/bill")
 public class BillController {
 
-    @Autowired private BillService    billService;
+    @Autowired private BillService     billService;
     @Autowired private CustomerService customerService;
-    @Autowired private CarRepository  carRepository;
-    @Autowired private PaymentService paymentService;
-    @Autowired private PdfService     pdfService;
+    @Autowired private CarRepository   carRepository;
+    @Autowired private PaymentService  paymentService;
+    @Autowired private PdfService      pdfService;
 
     // ─────────────────────────────────────────────────────────
     // SHOW BILL CREATION PAGE — GET /bill/new
@@ -55,6 +55,14 @@ public class BillController {
 
     // ─────────────────────────────────────────────────────────
     // SHOW EDIT FORM — GET /bill/{id}/edit
+    //
+    // CHANGED: existing services are now split into two
+    // pre-populated lists on the BillForm:
+    //   - billForm.services → only LABOUR rows (existing behavior)
+    //   - billForm.parts    → only PART rows (new)
+    // The "services" model attribute (used by edit.html's
+    // Thymeleaf display loop) is similarly split via two new
+    // model attributes: "labourItems" and "partItems".
     // ─────────────────────────────────────────────────────────
     @GetMapping("/{id}/edit")
     public String showEditForm(@PathVariable Long id, Model model,
@@ -67,51 +75,49 @@ public class BillController {
         }
 
         Bill bill = billOpt.get();
-        System.out.println("========== EDIT BILL ==========");
-        System.out.println("Bill Number = " + bill.getBillNumber());
+        model.addAttribute("bill", bill);
 
+        // Split existing services by itemType for the edit page display loops
+        List<BillServiceItem> labourItems = new ArrayList<>();
+        List<BillServiceItem> partItems   = new ArrayList<>();
         if (bill.getServices() != null) {
-            System.out.println("Services Count = " + bill.getServices().size());
-
             for (BillServiceItem item : bill.getServices()) {
-                System.out.println(
-                        item.getServiceName() + " = " + item.getAmount()
-                );
+                String type = item.getItemType() != null ? item.getItemType() : "LABOUR";
+                if ("PART".equalsIgnoreCase(type)) {
+                    partItems.add(item);
+                } else {
+                    labourItems.add(item);
+                }
             }
         }
-        System.out.println("===============================");
-
-        model.addAttribute("bill", bill);
-        model.addAttribute("services", bill.getServices());
-
-        // Pass discount amount to edit page JavaScript
-        model.addAttribute(
-                "discountAmount",
-                bill.getDiscountAmount() != null
-                        ? bill.getDiscountAmount()
-                        : BigDecimal.ZERO
-        );
+        model.addAttribute("labourItems", labourItems);
+        model.addAttribute("partItems", partItems);
 
         BillForm billForm = new BillForm();
         billForm.setNotes(bill.getNotes());
+        if (bill.getDueDate() != null) billForm.setDueDate(bill.getDueDate().toString());
 
-        if (bill.getDueDate() != null) {
-            billForm.setDueDate(bill.getDueDate().toString());
-        }
-
+        // Pre-populate LABOUR rows into billForm.services
         List<BillForm.ServiceLine> lines = new ArrayList<>();
-
-        if (bill.getServices() != null) {
-            for (BillServiceItem item : bill.getServices()) {
-                BillForm.ServiceLine line = new BillForm.ServiceLine();
-                line.setServiceName(item.getServiceName());
-                line.setDescription(item.getDescription());
-                line.setAmount(item.getAmount());
-                lines.add(line);
-            }
+        for (BillServiceItem item : labourItems) {
+            BillForm.ServiceLine line = new BillForm.ServiceLine();
+            line.setServiceName(item.getServiceName());
+            line.setDescription(item.getDescription());
+            line.setAmount(item.getAmount());
+            lines.add(line);
         }
-
         billForm.setServices(lines);
+
+        // NEW: Pre-populate PART rows into billForm.parts
+        List<BillForm.PartLine> partLines = new ArrayList<>();
+        for (BillServiceItem item : partItems) {
+            BillForm.PartLine pl = new BillForm.PartLine();
+            pl.setPartName(item.getServiceName());
+            pl.setQty(item.getQty());
+            pl.setUnitPrice(item.getUnitPrice());
+            partLines.add(pl);
+        }
+        billForm.setParts(partLines);
 
         model.addAttribute("billForm", billForm);
         model.addAttribute("customers", customerService.findAll());
@@ -122,33 +128,18 @@ public class BillController {
     // ─────────────────────────────────────────────────────────
     // SAVE EDITED BILL — POST /bill/{id}/edit
     //
-    // KEY FIX: We no longer do bill.setPaidAmount(form value).
-    //
-    // OLD (broken):
-    //   bill.setPaidAmount(billForm.getInitialPayment())
-    //   → directly overwrote bills.paid_amount with whatever owner typed
-    //   → payments table SUM and bills.paid_amount got out of sync
-    //
-    // NEW (correct):
-    //   bill.getPaidAmount() comes from DB (loaded by findById above)
-    //   We never touch it directly in edit.
-    //   If owner enters additionalPayment > 0 in the edit form,
-    //   we call paymentService.recordPayment() which:
-    //     1. Inserts into payments table
-    //     2. Re-SUM all payments from DB
-    //     3. Updates bills.paid_amount from that SUM
-    //   → payments table and bills table always in sync. ✓
+    // CHANGED: now builds BillServiceItem list from BOTH
+    // billForm.services (LABOUR) and billForm.parts (PART),
+    // then merges them before calling updateBillWithServices().
     // ─────────────────────────────────────────────────────────
     @PostMapping("/{id}/edit")
     public String saveEditedBill(@PathVariable Long id,
                                  @ModelAttribute("billForm") BillForm billForm,
                                  RedirectAttributes redirectAttributes) {
         try {
-            // Load existing bill from DB — paidAmount comes from DB, not form
             Bill bill = billService.findById(id)
                     .orElseThrow(() -> new RuntimeException("Bill not found: " + id));
 
-            // Update due date
             if (billForm.getDueDate() != null && !billForm.getDueDate().isEmpty()) {
                 try {
                     bill.setDueDate(LocalDate.parse(billForm.getDueDate().trim()));
@@ -157,45 +148,22 @@ public class BillController {
                 bill.setDueDate(null);
             }
 
-            // Update notes
             bill.setNotes(billForm.getNotes());
 
-            // DO NOT call bill.setPaidAmount() — paid amount is owned by payments table
+            // Build the combined service items list (LABOUR + PART)
+            List<BillServiceItem> serviceItems = buildServiceItems(billForm);
 
-            // Parse services
-            List<BillServiceItem> serviceItems = new ArrayList<>();
-            if (billForm.getServices() != null) {
-                int order = 1;
-                for (BillForm.ServiceLine line : billForm.getServices()) {
-                    if (line.getServiceName() == null || line.getServiceName().trim().isEmpty()) continue;
-                    if (line.getAmount() == null || line.getAmount().compareTo(BigDecimal.ZERO) <= 0) continue;
+            if (serviceItems.isEmpty()) throw new RuntimeException("Bill must have at least one service or part");
 
-                    serviceItems.add(BillServiceItem.builder()
-                            .serviceName(line.getServiceName().trim())
-                            .description(line.getDescription() != null ? line.getDescription().trim() : null)
-                            .amount(line.getAmount())
-                            .sortOrder(order++)
-                            .build());
-                }
-            }
-
-            if (serviceItems.isEmpty()) throw new RuntimeException("Bill must have at least one service");
-
-            // Update services + recalculate total/balance/status using DB paid amount
             billService.updateBillWithServices(bill, serviceItems);
 
-            // Handle additional payment entered during edit
-            // billForm.getInitialPayment() = the "Additional Payment Now" field in edit.html
-            // This is NEW money received right now, not the total paid so far.
             BigDecimal additionalPayment = billForm.getInitialPayment() != null
                     ? billForm.getInitialPayment() : BigDecimal.ZERO;
 
             if (additionalPayment.compareTo(BigDecimal.ZERO) > 0) {
-                // Reload bill to get fresh balance after service update
                 Bill freshBill = billService.findById(id)
                         .orElseThrow(() -> new RuntimeException("Bill not found: " + id));
 
-                // Cap additional payment at current balance (cannot overpay)
                 if (additionalPayment.compareTo(freshBill.getBalanceAmount()) > 0) {
                     additionalPayment = freshBill.getBalanceAmount();
                 }
@@ -215,7 +183,6 @@ public class BillController {
                             .notes("Payment recorded during bill edit")
                             .build();
 
-                    // This updates payments table AND recalculates bills.paid_amount from SUM
                     paymentService.recordPayment(payment);
                 }
             }
@@ -250,6 +217,10 @@ public class BillController {
 
     // ─────────────────────────────────────────────────────────
     // SAVE NEW BILL — POST /bill/save
+    //
+    // CHANGED: serviceItems now built from buildServiceItems()
+    // helper, which merges LABOUR (billForm.services) and
+    // PART (billForm.parts) rows into one list.
     // ─────────────────────────────────────────────────────────
     @PostMapping("/save")
     public String saveBill(@ModelAttribute("billForm") BillForm billForm,
@@ -298,22 +269,9 @@ public class BillController {
                 }
             }
 
-            // SERVICES
-            List<BillServiceItem> serviceItems = new ArrayList<>();
-            if (billForm.getServices() != null) {
-                int order = 1;
-                for (BillForm.ServiceLine line : billForm.getServices()) {
-                    if (line.getServiceName() == null || line.getServiceName().trim().isEmpty()) continue;
-                    if (line.getAmount() == null || line.getAmount().compareTo(BigDecimal.ZERO) <= 0) continue;
-                    serviceItems.add(BillServiceItem.builder()
-                            .serviceName(line.getServiceName().trim())
-                            .description(line.getDescription() != null ? line.getDescription().trim() : null)
-                            .amount(line.getAmount())
-                            .sortOrder(order++)
-                            .build());
-                }
-            }
-            if (serviceItems.isEmpty()) throw new RuntimeException("Please add at least one service");
+            // SERVICES + PARTS (merged)
+            List<BillServiceItem> serviceItems = buildServiceItems(billForm);
+            if (serviceItems.isEmpty()) throw new RuntimeException("Please add at least one service or part");
 
             // PAYMENT + DUE DATE
             BigDecimal initialPayment = billForm.getInitialPayment() != null
@@ -365,7 +323,86 @@ public class BillController {
     }
 
     // ─────────────────────────────────────────────────────────
+    // NEW HELPER: buildServiceItems()
+    //
+    // Merges billForm.services (LABOUR) and billForm.parts (PART)
+    // into one List<BillServiceItem>, ready to pass to
+    // BillService.saveBillWithServices() / updateBillWithServices().
+    //
+    // LABOUR rows: amount = whatever the owner typed directly.
+    // PART rows:   amount = qty * unitPrice (always computed here,
+    //              never trusted from a hidden form field, so the
+    //              math can never be tampered with or go stale).
+    //
+    // sortOrder is assigned sequentially across BOTH lists so the
+    // services table (Labour) keeps its original relative order,
+    // followed by parts — though PdfService re-splits them by
+    // itemType anyway, so this ordering mainly matters for the
+    // sort_order column's uniqueness, not visual order in the PDF.
+    // ─────────────────────────────────────────────────────────
+    private List<BillServiceItem> buildServiceItems(BillForm billForm) {
+
+        List<BillServiceItem> items = new ArrayList<>();
+        int order = 1;
+
+        // ── LABOUR rows ────────────────────────────────────────
+        if (billForm.getServices() != null) {
+            for (BillForm.ServiceLine line : billForm.getServices()) {
+                if (line.getServiceName() == null || line.getServiceName().trim().isEmpty()) continue;
+                if (line.getAmount() == null || line.getAmount().compareTo(BigDecimal.ZERO) <= 0) continue;
+
+                items.add(BillServiceItem.builder()
+                        .serviceName(line.getServiceName().trim())
+                        .description(line.getDescription() != null ? line.getDescription().trim() : null)
+                        .amount(line.getAmount())
+                        .itemType("LABOUR")
+                        .qty(null)
+                        .unitPrice(null)
+                        .sortOrder(order++)
+                        .build());
+            }
+        }
+
+        // ── PART rows ──────────────────────────────────────────
+        if (billForm.getParts() != null) {
+            for (BillForm.PartLine part : billForm.getParts()) {
+                if (part.getPartName() == null || part.getPartName().trim().isEmpty()) continue;
+
+                BigDecimal qty = part.getQty() != null ? part.getQty() : BigDecimal.ZERO;
+                BigDecimal unitPrice = part.getUnitPrice() != null ? part.getUnitPrice() : BigDecimal.ZERO;
+
+                // Skip rows where qty or unit price wasn't filled in —
+                // mirrors the existing "amount must be > 0" guard on services.
+                if (qty.compareTo(BigDecimal.ZERO) <= 0) continue;
+                if (unitPrice.compareTo(BigDecimal.ZERO) <= 0) continue;
+
+                // Amount is ALWAYS computed here — never trusted from
+                // any client-submitted total, so it can't be tampered with.
+                BigDecimal amount = qty.multiply(unitPrice);
+
+                items.add(BillServiceItem.builder()
+                        .serviceName(part.getPartName().trim())
+                        .description(null)
+                        .amount(amount)
+                        .itemType("PART")
+                        .qty(qty)
+                        .unitPrice(unitPrice)
+                        .sortOrder(order++)
+                        .build());
+            }
+        }
+
+        return items;
+    }
+
+    // ─────────────────────────────────────────────────────────
     // VIEW BILL — GET /bill/{id}
+    //
+    // CHANGED: now splits bill.getServices() into labourItems
+    // and partItems, same pattern as showEditForm(), so
+    // bill/detail.html can render two separate tables —
+    // "Services Performed" (labour only) and "Parts Used"
+    // (parts only) — instead of one merged list.
     // ─────────────────────────────────────────────────────────
     @GetMapping("/{id}")
     public String viewBill(@PathVariable Long id, Model model) {
@@ -373,8 +410,24 @@ public class BillController {
         if (billOpt.isEmpty()) return "redirect:/dashboard";
 
         Bill bill = billOpt.get();
+
+        List<BillServiceItem> labourItems = new ArrayList<>();
+        List<BillServiceItem> partItems   = new ArrayList<>();
+        if (bill.getServices() != null) {
+            for (BillServiceItem item : bill.getServices()) {
+                String type = item.getItemType() != null ? item.getItemType() : "LABOUR";
+                if ("PART".equalsIgnoreCase(type)) {
+                    partItems.add(item);
+                } else {
+                    labourItems.add(item);
+                }
+            }
+        }
+
         model.addAttribute("bill", bill);
         model.addAttribute("gst", billService.getGstBreakdown(bill));
+        model.addAttribute("labourItems", labourItems);
+        model.addAttribute("partItems", partItems);
         model.addAttribute("payments", paymentService.getPaymentHistory(id));
         model.addAttribute("newPayment", new Payment());
         return "bill/detail";

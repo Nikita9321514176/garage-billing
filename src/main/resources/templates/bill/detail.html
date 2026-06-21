@@ -10,6 +10,20 @@
         Bill: <span th:text="${bill.billNumber}">—</span>
     </h2>
     <div class="d-flex gap-2">
+        <!--
+            NEW: Download PDF button — placed FIRST so the most
+            frequently used action (admin wants the PDF right
+            after opening a bill) is leftmost/most prominent.
+            Reuses the EXISTING /bill/{id}/pdf endpoint that
+            already works from the bill list page — zero backend
+            changes needed, this is purely a new entry point to
+            functionality that already exists.
+        -->
+        <a th:href="@{/bill/{id}/pdf(id=${bill.id})}"
+           class="btn btn-outline-danger btn-sm"
+           target="_blank">
+            <i class="bi bi-file-earmark-pdf me-1"></i>Download PDF
+        </a>
         <a th:href="@{/bill/{id}/edit(id=${bill.id})}"
            class="btn btn-outline-warning btn-sm">
             <i class="bi bi-pencil-square me-1"></i>Edit Bill
@@ -137,129 +151,182 @@
             </div>
         </div>
 
-        <!-- ── SERVICES PERFORMED CARD ───────────────── -->
-        <div class="card mb-3">
-            <div class="card-header bg-dark text-white">
-                <i class="bi bi-tools me-2"></i>
-                Services Performed
-            </div>
-            <div class="card-body p-0">
-                <table class="table mb-0">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Service</th>
-                            <th>Description</th>
-                            <th class="text-end">Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr th:each="svc, i : ${bill.services}">
-                            <td class="text-muted"
-                                th:text="${i.count}">1</td>
-                            <td th:text="${svc.serviceName}">—</td>
-                            <td class="text-muted"
-                                th:text="${svc.description != null
-                                    and !svc.description.isEmpty()
-                                    ? svc.description : '—'}">
-                                —
-                            </td>
-                            <td class="text-end">
-                                &#8377;<span th:text="${#numbers.formatDecimal(
-                                    svc.amount,1,'COMMA',2,'POINT')}">
-                                </span>
-                            </td>
-                        </tr>
-                        <tr th:if="${bill.services == null
-                                    or #lists.isEmpty(bill.services)}">
-                            <td colspan="4"
-                                class="text-center text-muted py-3">
-                                No services recorded
-                            </td>
-                        </tr>
-                    </tbody>
-                    <!--
-                        tfoot shows subtotal / discount / total.
-                        discountAmount row only appears if discount > 0.
-                    -->
-                    <tfoot class="table-light">
-                        <!-- Services subtotal -->
-                        <tr>
-                            <td colspan="3" class="text-end text-muted">
-                                Subtotal
-                            </td>
-                            <td class="text-end text-muted">
-                                &#8377;<span th:text="${#numbers.formatDecimal(
-                                    gst.subtotal, 1,'COMMA',2,'POINT')}">
-                                </span>
-                            </td>
-                        </tr>
-                        <!-- Discount row -->
-                        <tr th:if="${bill.discountAmount != null
-                                    and bill.discountAmount.compareTo(
-                                        T(java.math.BigDecimal).ZERO) > 0}">
-                            <td colspan="3"
-                                class="text-end text-success">
-                                Discount
-                            </td>
-                            <td class="text-end text-success fw-semibold">
-                                - &#8377;<span th:text="${#numbers.formatDecimal(
-                                    bill.discountAmount,
-                                    1,'COMMA',2,'POINT')}">
-                                </span>
-                            </td>
-                        </tr>
-                        <!-- Taxable amount -->
-                        <tr>
-                            <td colspan="3" class="text-end text-muted">
-                                Taxable Amount
-                            </td>
-                            <td class="text-end text-muted">
-                                &#8377;<span th:text="${#numbers.formatDecimal(
-                                    gst.taxableAmount, 1,'COMMA',2,'POINT')}">
-                                </span>
-                            </td>
-                        </tr>
-                        <!-- CGST -->
-                        <tr>
-                            <td colspan="3" class="text-end text-muted">
-                                CGST @ 9%
-                            </td>
-                            <td class="text-end text-muted">
-                                &#8377;<span th:text="${#numbers.formatDecimal(
-                                    gst.cgstAmount, 1,'COMMA',2,'POINT')}">
-                                </span>
-                            </td>
-                        </tr>
-                        <!-- SGST -->
-                        <tr>
-                            <td colspan="3" class="text-end text-muted">
-                                SGST @ 9%
-                            </td>
-                            <td class="text-end text-muted">
-                                &#8377;<span th:text="${#numbers.formatDecimal(
-                                    gst.sgstAmount, 1,'COMMA',2,'POINT')}">
-                                </span>
-                            </td>
-                        </tr>
-                        <!-- Grand total row -->
-                        <tr>
-                            <td colspan="3"
-                                class="text-end fw-bold">
-                                Grand Total <span class="text-muted small fw-normal">(incl. GST)</span>
-                            </td>
-                            <td class="text-end fw-bold text-primary">
-                                &#8377;<span th:text="${#numbers.formatDecimal(
-                                    bill.totalAmount,
-                                    1,'COMMA',2,'POINT')}">
-                                    0.00
-                                </span>
-                            </td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
-        </div>
+		<!-- ── SERVICES PERFORMED CARD (LABOUR ONLY) ───────
+		            CHANGED: now loops ${labourItems} instead of
+		            ${bill.services} — BillController now splits
+		            labour and part rows into separate model
+		            attributes, so this table never shows parts mixed in.
+		       ─────────────────────────────────────────────────── -->
+		       <div class="card mb-3">
+		           <div class="card-header bg-dark text-white">
+		               <i class="bi bi-tools me-2"></i>
+		               Services Performed
+		           </div>
+		           <div class="card-body p-0">
+		               <table class="table mb-0">
+		                   <thead>
+		                       <tr>
+		                           <th>#</th>
+		                           <th>Service</th>
+		                           <th>Description</th>
+		                           <th class="text-end">Amount</th>
+		                       </tr>
+		                   </thead>
+		                   <tbody>
+		                       <tr th:each="svc, i : ${labourItems}">
+		                           <td class="text-muted"
+		                               th:text="${i.count}">1</td>
+		                           <td th:text="${svc.serviceName}">—</td>
+		                           <td class="text-muted"
+		                               th:text="${svc.description != null
+		                                   and !svc.description.isEmpty()
+		                                   ? svc.description : '—'}">
+		                               —
+		                           </td>
+		                           <td class="text-end">
+		                               &#8377;<span th:text="${#numbers.formatDecimal(
+		                                   svc.amount,1,'COMMA',2,'POINT')}">
+		                               </span>
+		                           </td>
+		                       </tr>
+		                       <tr th:if="${labourItems == null
+		                                   or #lists.isEmpty(labourItems)}">
+		                           <td colspan="4"
+		                               class="text-center text-muted py-3">
+		                               No services recorded
+		                           </td>
+		                       </tr>
+		                   </tbody>
+		               </table>
+		           </div>
+		       </div>
+
+		       <!-- ── NEW: PARTS USED CARD ─────────────────────────
+		            Loops ${partItems} — only PART rows. Shows Qty
+		            and Unit Price columns (real data now available
+		            from the qty/unitPrice fields added to
+		            BillServiceItem). Same dark header style as
+		            Services card, per your color-consistency request.
+		       ─────────────────────────────────────────────────── -->
+		       <div class="card mb-3">
+		           <div class="card-header bg-dark text-white">
+		               <i class="bi bi-gear-wide-connected me-2"></i>
+		               Parts Used
+		           </div>
+		           <div class="card-body p-0">
+		               <table class="table mb-0">
+		                   <thead>
+		                       <tr>
+		                           <th>#</th>
+		                           <th>Part Name</th>
+		                           <th class="text-end">Qty</th>
+		                           <th class="text-end">Unit Price</th>
+		                           <th class="text-end">Amount</th>
+		                       </tr>
+		                   </thead>
+		                   <tbody>
+		                       <tr th:each="part, i : ${partItems}">
+		                           <td class="text-muted"
+		                               th:text="${i.count}">1</td>
+		                           <td th:text="${part.serviceName}">—</td>
+		                           <td class="text-end"
+		                               th:text="${part.qty != null
+		                                   ? #numbers.formatDecimal(part.qty,1,'COMMA',0,'POINT')
+		                                   : '—'}">
+		                               —
+		                           </td>
+		                           <td class="text-end">
+		                               &#8377;<span th:text="${part.unitPrice != null
+		                                   ? #numbers.formatDecimal(part.unitPrice,1,'COMMA',2,'POINT')
+		                                   : '0.00'}">
+		                               </span>
+		                           </td>
+		                           <td class="text-end">
+		                               &#8377;<span th:text="${#numbers.formatDecimal(
+		                                   part.amount,1,'COMMA',2,'POINT')}">
+		                               </span>
+		                           </td>
+		                       </tr>
+		                       <tr th:if="${partItems == null
+		                                   or #lists.isEmpty(partItems)}">
+		                           <td colspan="5"
+		                               class="text-center text-muted py-3">
+		                               No parts used for this service
+		                           </td>
+		                       </tr>
+		                   </tbody>
+		               </table>
+		           </div>
+		       </div>
+
+		       <!-- ── NEW: COMBINED TOTALS CARD ────────────────────
+		            Subtotal / Discount / Total now sit in their OWN
+		            card below both tables, instead of being a tfoot
+		            inside the old Services table. This is necessary
+		            because the totals reflect labour+parts COMBINED,
+		            so they no longer belong inside just one of the
+		            two tables.
+		       ─────────────────────────────────────────────────── -->
+		       <div class="card mb-3">
+		           <div class="card-body">
+		               <div class="row justify-content-end">
+		                   <div class="col-md-6">
+
+		                       <div class="d-flex justify-content-between mb-1">
+		                           <span class="text-muted">Subtotal</span>
+		                           <span class="text-muted">
+		                               &#8377;<span th:text="${#numbers.formatDecimal(
+		                                   gst.subtotal, 1,'COMMA',2,'POINT')}"></span>
+		                           </span>
+		                       </div>
+
+		                       <div class="d-flex justify-content-between mb-1 text-success"
+		                            th:if="${bill.discountAmount != null
+		                                   and bill.discountAmount.compareTo(
+		                                       T(java.math.BigDecimal).ZERO) > 0}">
+		                           <span>Discount</span>
+		                           <span class="fw-semibold">
+		                               - &#8377;<span th:text="${#numbers.formatDecimal(
+		                                   bill.discountAmount,1,'COMMA',2,'POINT')}"></span>
+		                           </span>
+		                       </div>
+
+		                       <div class="d-flex justify-content-between mb-1">
+		                           <span class="text-muted">Taxable Amount</span>
+		                           <span class="text-muted">
+		                               &#8377;<span th:text="${#numbers.formatDecimal(
+		                                   gst.taxableAmount, 1,'COMMA',2,'POINT')}"></span>
+		                           </span>
+		                       </div>
+
+		                       <div class="d-flex justify-content-between mb-1">
+		                           <span class="text-muted">CGST @ 9%</span>
+		                           <span class="text-muted">
+		                               &#8377;<span th:text="${#numbers.formatDecimal(
+		                                   gst.cgstAmount, 1,'COMMA',2,'POINT')}"></span>
+		                           </span>
+		                       </div>
+
+		                       <div class="d-flex justify-content-between mb-2">
+		                           <span class="text-muted">SGST @ 9%</span>
+		                           <span class="text-muted">
+		                               &#8377;<span th:text="${#numbers.formatDecimal(
+		                                   gst.sgstAmount, 1,'COMMA',2,'POINT')}"></span>
+		                           </span>
+		                       </div>
+
+		                       <div class="d-flex justify-content-between border-top pt-2">
+		                           <span class="fw-bold">Grand Total <span class="text-muted small fw-normal">(incl. GST)</span></span>
+		                           <span class="fw-bold text-primary fs-5">
+		                               &#8377;<span th:text="${#numbers.formatDecimal(
+		                                   bill.totalAmount,1,'COMMA',2,'POINT')}">0.00</span>
+		                           </span>
+		                       </div>
+
+		                   </div>
+		               </div>
+		           </div>
+		       </div>
 
         <!-- ── PAYMENT HISTORY CARD ───────────────────── -->
         <div class="card">
