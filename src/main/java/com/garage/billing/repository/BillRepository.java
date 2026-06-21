@@ -283,6 +283,29 @@ public class BillRepository {
 
         return results.stream().findFirst();
     }
+    
+ // ─────────────────────────────────────────────────────────
+ // FIND BILL BY BILL NUMBER
+ // ─────────────────────────────────────────────────────────
+ public Optional<Bill> findByBillNumber(String billNumber) {
+
+     String sql = """
+         SELECT b.*,
+                cu.name  AS customer_name,
+                cu.phone AS customer_phone,
+                c.car_number,
+                c.car_model
+         FROM bills b
+         JOIN customers cu ON b.customer_id = cu.id
+         JOIN cars      c  ON b.car_id      = c.id
+         WHERE b.bill_number = ?
+         """;
+
+     List<Bill> results =
+             jdbcTemplate.query(sql, BILL_MAPPER, billNumber);
+
+     return results.stream().findFirst();
+ }
 
     // ─────────────────────────────────────────────────────────
     // FIND BY CAR NUMBER

@@ -45,13 +45,13 @@ public class SecurityConfig {
                 // the login page itself would have no styling!
                 // **/*.css matches any CSS file in any folder.
                 // /webjars/** = Bootstrap and other web libraries.
-                .requestMatchers(
-                    "/css/**",
-                    "/js/**",
-                    "/images/**",
-                    "/favicon.ico"
-                ).permitAll()
-
+            		.requestMatchers(
+            			    "/css/**",
+            			    "/js/**",
+            			    "/images/**",
+            			    "/favicon.ico",
+            			    "/invoice/**"
+            			).permitAll()
                 // The login page itself must be public.
                 // If /login required login, nobody could ever log in.
                 .requestMatchers("/login").permitAll()

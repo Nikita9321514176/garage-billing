@@ -1,288 +1,65 @@
 package com.garage.billing.service;
 
-import com.garage.billing.config.GarageConfig;
 import com.garage.billing.model.Bill;
-
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 
 @Service
 public class WhatsAppService {
 
-    // =====================================================
-    // BILL URL
-    // =====================================================
+    // Base URL of your deployed app.
+    // Set this in application.properties:
+    //   app.base.url=https://the-j-motors.localo.site
+    // For local testing it defaults to localhost:8080
+    @Value("${app.base.url:http://localhost:8080}")
+    private String baseUrl;
 
-    public String buildBillUrl(Bill bill) {
-
-        String message = buildBillMessage(bill);
-
-        return buildWaUrl(
-                bill.getCustomerPhone(),
-                message
-        );
-    }
-
-    // =====================================================
-    // REMINDER URL
-    // =====================================================
-
-    public String buildReminderUrl(
-            String customerPhone,
-            String customerName,
-            String billNumber,
-            BigDecimal balance) {
-
-        String message =
-                buildReminderMessage(
-                        customerName,
-                        billNumber,
-                        balance
-                );
-
-        return buildWaUrl(
-                customerPhone,
-                message
-        );
-    }
-
-    // =====================================================
-    // WA.ME URL BUILDER
-    // =====================================================
-
-    public String buildWaUrl(
-            String phone,
-            String message) {
-
-        if (phone == null || phone.trim().isEmpty()) {
-            return "#";
-        }
-
-        String cleaned =
-                phone.replaceAll("[^0-9]", "");
-
-        if (cleaned.startsWith("0")) {
-            cleaned = cleaned.substring(1);
-        }
-
-        if (cleaned.length() == 10) {
-            cleaned = "91" + cleaned;
-        }
-
-        String encodedMessage;
-
-        try {
-
-            encodedMessage =
-                    URLEncoder.encode(
-                            message,
-                            StandardCharsets.UTF_8
-                    );
-
-        } catch (Exception e) {
-
-            encodedMessage =
-                    message.replace(" ", "+");
-        }
-
-        return "https://wa.me/"
-                + cleaned
-                + "?text="
-                + encodedMessage;
-    }
-
-    // =====================================================
-    // MAIN BILL MESSAGE
-    // =====================================================
-
+    // ─────────────────────────────────────────────────────
+    // BUILD WHATSAPP MESSAGE WITH PUBLIC INVOICE LINK
+    // ─────────────────────────────────────────────────────
     public String buildBillMessage(Bill bill) {
 
-        String customerName =
-                bill.getCustomerName() != null
-                        ? bill.getCustomerName()
-                        : "Customer";
+        // Public invoice URL — customer opens this without login
+        String invoiceUrl = baseUrl + "/invoice/" + bill.getBillNumber();
 
-        String vehicleNumber =
-                bill.getCarNumber() != null
-                        ? bill.getCarNumber()
-                        : "-";
+        // Customer first name only (friendlier)
+        String customerName = bill.getCustomerName() != null
+                ? bill.getCustomerName().split(" ")[0]
+                : "Customer";
 
-        String billNo =
-                bill.getBillNumber() != null
-                        ? bill.getBillNumber()
-                        : "-";
-
-        BigDecimal total =
-                bill.getTotalAmount() != null
-                        ? bill.getTotalAmount()
-                        : BigDecimal.ZERO;
-
-        BigDecimal paid =
-                bill.getPaidAmount() != null
-                        ? bill.getPaidAmount()
-                        : BigDecimal.ZERO;
-
-        BigDecimal balance =
-                bill.getBalanceAmount() != null
-                        ? bill.getBalanceAmount()
-                        : BigDecimal.ZERO;
-
-        String status =
-                bill.getPaymentStatus() != null
-                        ? bill.getPaymentStatus()
-                        : "PENDING";
-
-        StringBuilder sb = new StringBuilder();
-
-        // =================================================
-        // PAID
-        // =================================================
-
-        if ("PAID".equalsIgnoreCase(status)
-                || balance.compareTo(BigDecimal.ZERO) <= 0) {
-
-            sb.append("Hello ")
-                    .append(customerName)
-                    .append(",\n\n");
-
-            sb.append("Thank you for visiting ")
-                    .append(GarageConfig.GARAGE_NAME)
-                    .append(".\n\n");
-
-            sb.append("Your vehicle service bill has been successfully settled.\n\n");
-
-            sb.append("Bill No: ")
-                    .append(billNo)
-                    .append("\n");
-
-            sb.append("Vehicle: ")
-                    .append(vehicleNumber)
-                    .append("\n");
-
-            sb.append("Total Bill Amount: ₹")
-                    .append(total.setScale(0, RoundingMode.HALF_UP))
-                    .append("\n");
-
-            sb.append("Outstanding Balance: ₹0\n\n");
-
-            sb.append("Thank you for choosing ")
-                    .append(GarageConfig.GARAGE_NAME)
-                    .append(".\n\n");
-
-            sb.append("For any queries, please contact us.\n\n");
-
-            sb.append("Regards,\n");
-            sb.append(GarageConfig.GARAGE_NAME);
-
-            return sb.toString();
-        }
-
-        // =================================================
-        // PARTIAL
-        // =================================================
-
-        if ("PARTIAL".equalsIgnoreCase(status)) {
-
-            sb.append("Hello ")
-                    .append(customerName)
-                    .append(",\n\n");
-
-            sb.append("We hope you are doing well.\n\n");
-
-            sb.append("A balance is pending for the service work completed on your vehicle.\n\n");
-
-            sb.append("Bill No: ")
-                    .append(billNo)
-                    .append("\n");
-
-            sb.append("Vehicle: ")
-                    .append(vehicleNumber)
-                    .append("\n");
-
-            sb.append("Total Amount: ₹")
-                    .append(total.setScale(0, RoundingMode.HALF_UP))
-                    .append("\n");
-
-            sb.append("Paid Amount: ₹")
-                    .append(paid.setScale(0, RoundingMode.HALF_UP))
-                    .append("\n");
-
-            sb.append("Balance Due: ₹")
-                    .append(balance.setScale(0, RoundingMode.HALF_UP))
-                    .append("\n\n");
-
-            sb.append("Kindly clear the pending amount at your convenience.\n\n");
-
-            sb.append("Thank you for choosing ")
-                    .append(GarageConfig.GARAGE_NAME)
-                    .append(".\n\n");
-
-            sb.append("Regards,\n");
-            sb.append(GarageConfig.GARAGE_NAME);
-
-            return sb.toString();
-        }
-
-        // =================================================
-        // PENDING
-        // =================================================
-
-        sb.append("Hello ")
-                .append(customerName)
-                .append(",\n\n");
-
-        sb.append("This is a reminder regarding the pending payment for your vehicle service bill.\n\n");
-
-        sb.append("Bill No: ")
-                .append(billNo)
-                .append("\n");
-
-        sb.append("Vehicle: ")
-                .append(vehicleNumber)
-                .append("\n");
-
-        sb.append("Balance Due: ₹")
-                .append(balance.setScale(0, RoundingMode.HALF_UP))
-                .append("\n\n");
-
-        sb.append("We request you to clear the outstanding amount at your convenience.\n\n");
-
-        sb.append("Thank you for your continued trust in ")
-                .append(GarageConfig.GARAGE_NAME)
-                .append(".\n\n");
-
-        sb.append("Regards,\n");
-        sb.append(GarageConfig.GARAGE_NAME);
-
-        return sb.toString();
+        return "Hello " + customerName + ",\n\n"
+             + "Your service invoice is ready.\n\n"
+             + "Invoice No: " + bill.getBillNumber() + "\n\n"
+             + "View Invoice:\n"
+             + invoiceUrl + "\n\n"
+             + "Thank you for choosing The J Motors.\n\n"
+             + "\uD83D\uDCDE 7303666143";
     }
 
-    // =====================================================
-    // REMINDER MESSAGE
-    // =====================================================
+    // ─────────────────────────────────────────────────────
+    // BUILD wa.me URL (opens WhatsApp with message)
+    // ─────────────────────────────────────────────────────
+    public String buildBillUrl(Bill bill) {
+        String phone = bill.getCustomerPhone();
+        String message = buildBillMessage(bill);
+        return buildWaUrl(phone, message);
+    }
 
-    public String buildReminderMessage(
-            String customerName,
-            String billNumber,
-            BigDecimal balance) {
+    public String buildWaUrl(String phone, String message) {
+        // Clean phone: remove spaces, dashes, +
+        String cleanPhone = phone != null
+                ? phone.replaceAll("[^0-9]", "") : "";
 
-        return "Hello "
-                + customerName
-                + ",\n\n"
-                + "This is a reminder regarding Bill "
-                + billNumber
-                + ".\n\n"
-                + "Outstanding Balance: ₹"
-                + (balance != null
-                ? balance.setScale(0, RoundingMode.HALF_UP)
-                : "0")
-                + "\n\n"
-                + "Kindly clear the pending amount at your convenience.\n\n"
-                + "Regards,\n"
-                + GarageConfig.GARAGE_NAME;
+        // Add India country code if not present
+        if (cleanPhone.length() == 10) {
+            cleanPhone = "91" + cleanPhone;
+        }
+
+        String encoded = URLEncoder.encode(message, StandardCharsets.UTF_8);
+        return "https://wa.me/" + cleanPhone + "?text=" + encoded;
     }
 }
