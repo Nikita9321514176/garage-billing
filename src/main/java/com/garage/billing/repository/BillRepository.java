@@ -95,18 +95,27 @@ public class BillRepository {
     // ─────────────────────────────────────────────────────────
     private static final RowMapper<BillServiceItem> SERVICE_MAPPER =
             (rs, rowNum) -> {
-
+ 
         BillServiceItem item = new BillServiceItem();
-
+ 
         item.setId(rs.getLong("id"));
         item.setBillId(rs.getLong("bill_id"));
-
+ 
         item.setServiceName(rs.getString("service_name"));
         item.setDescription(rs.getString("description"));
-
+ 
         item.setAmount(rs.getBigDecimal("amount"));
+ 
+        // NEW: read item_type (PART or LABOUR), safe fallback
+        try {
+            String type = rs.getString("item_type");
+            item.setItemType(type != null ? type : "LABOUR");
+        } catch (Exception e) {
+            item.setItemType("LABOUR");
+        }
+ 
         item.setSortOrder(rs.getInt("sort_order"));
-
+ 
         return item;
     };
  // ─────────────────────────────────────────────────────────
@@ -180,29 +189,32 @@ public class BillRepository {
     // ─────────────────────────────────────────────────────────
     // SAVE SERVICE
     // ─────────────────────────────────────────────────────────
-    public void saveService(BillServiceItem item) {
+ public void saveService(BillServiceItem item) {
+	 
+     String sql = """
+         INSERT INTO bill_services
+         (
+             bill_id,
+             service_name,
+             description,
+             amount,
+             item_type,
+             sort_order
+         )
+         VALUES (?, ?, ?, ?, ?, ?)
+         """;
 
-        String sql = """
-            INSERT INTO bill_services
-            (
-                bill_id,
-                service_name,
-                description,
-                amount,
-                sort_order
-            )
-            VALUES (?, ?, ?, ?, ?)
-            """;
-
-        jdbcTemplate.update(
-                sql,
-                item.getBillId(),
-                item.getServiceName(),
-                item.getDescription(),
-                item.getAmount(),
-                item.getSortOrder()
-        );
-    }
+     jdbcTemplate.update(
+             sql,
+             item.getBillId(),
+             item.getServiceName(),
+             item.getDescription(),
+             item.getAmount(),
+             // NEW: item_type — defaults to LABOUR if null
+             item.getItemType() != null ? item.getItemType() : "LABOUR",
+             item.getSortOrder()
+     );
+ }
 
     // ─────────────────────────────────────────────────────────
     // DELETE SERVICES BY BILL ID

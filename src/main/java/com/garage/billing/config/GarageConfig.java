@@ -1,80 +1,74 @@
 package com.garage.billing.config;
 
 import org.springframework.stereotype.Component;
+import java.math.BigDecimal;
 
 // This is the ONLY file you need to edit to change
 // your garage's identity across the entire system.
-//
-// After changing these values:
-// - Every PDF invoice shows your real name and address
-// - Every WhatsApp message says your garage name
-// - The PDF footer shows your real website as a clickable link
-// - The PDF header shows your real GST number
-//
-// You do NOT need to change any other Java file.
 @Component
 public class GarageConfig {
 
     // ══════════════════════════════════════════════════════
-    // CHANGE THESE TO YOUR REAL GARAGE DETAILS
+    // GARAGE IDENTITY
     // ══════════════════════════════════════════════════════
 
-    // Your garage / workshop name — appears at top of every PDF
-    public static final String GARAGE_NAME =
-        "The J Motors";
-        // Example: "Sharma Auto Garage"
-        //          "Mumbai Car Service Centre"
-        //          "Quick Fix Workshop"
+    public static final String GARAGE_NAME = "The J Motors";
 
-    // First line of address — street and area
     public static final String ADDRESS_LINE_1 =
         "Om Shanti chawk near New Horzion School, Aanand Nagar GB Road.";
-        // Example: "Shop No. 12, Industrial Area"
-        //          "Opp. Bus Stand, Station Road"
 
-    // Second line of address — city, state, PIN
     public static final String ADDRESS_LINE_2 =
         "Thane(W), Maharashtra 400607";
-        // Example: "Mumbai, Maharashtra — 400001"
-        //          "Nashik, Maharashtra — 422001"
 
-    // Your garage's main phone number
-    // This appears on the PDF and in WhatsApp messages
-    public static final String PHONE =
-        "7303666143";
-        // Use your actual mobile or landline
-        // Example: "9800001234"
+    public static final String PHONE = "7303666143";
 
-    // Your garage email address (optional — leave blank if none)
-    public static final String EMAIL =
-        "";
-        // If you don't have an email just put blank: ""
+    public static final String EMAIL = "";
 
-    // GST registration number — appears on PDF invoice
-    // If you are not GST registered, put blank: ""
-    public static final String GST_NUMBER =
-        "";
-        // Example GST format: 27XXXXX1234X1Z5
-        // The 27 at the start = Maharashtra state code
+    // GST registration number — appears on PDF invoice.
+    // You confirmed The J Motors IS GST registered.
+    // Fill in your actual 15-character GSTIN below.
+    public static final String GST_NUMBER = "";
+        // Example format: 27XXXXX1234X1Z5
+        // Leave as "" only if not yet registered —
+        // GST section on invoice will then show 0%/blank.
 
-    // Your garage website — appears as a clickable link
-    // in the PDF footer. If no website, put blank: ""
     public static final String WEBSITE =
         "https://the-j-motors.localo.site/";
-        // Example: "www.sharmagarage.com"
-        // Or leave blank: ""
 
-    // Short tagline below the garage name on PDF
-    public static final String TAGLINE =
-        "";
-        // Example: "Trusted Workshop Since 2010"
-        //          "All Car Makes & Models Serviced"
+    public static final String TAGLINE = "";
 
-    // Footer message printed at the bottom of every PDF
-    // Keep it short — one or two sentences max
     public static final String FOOTER_MESSAGE =
-        "Thank you for choosing "
-        + GARAGE_NAME
+        "Thank you for choosing " + GARAGE_NAME
         + "! We look forward to serving you again.";
-        // This automatically uses your GARAGE_NAME above
+
+    // ══════════════════════════════════════════════════════
+    // NEW: GST TAX RATES
+    // ══════════════════════════════════════════════════════
+    // Standard rate for vehicle repair/service in India is 18%,
+    // split equally between Central and State government:
+    //   CGST = 9%  (Central GST)
+    //   SGST = 9%  (State GST — applies since customer & garage
+    //               are both in Maharashtra)
+    // If GST_NUMBER above is blank, PdfService treats the garage
+    // as not-yet-registered and SKIPS tax calculation automatically
+    // (shows Rs. 0.00 for GST) — change GST_NUMBER above when you
+    // receive your actual GSTIN to activate real tax calculation.
+    public static final BigDecimal CGST_RATE = new BigDecimal("9.00");
+    public static final BigDecimal SGST_RATE = new BigDecimal("9.00");
+
+    // ══════════════════════════════════════════════════════
+    // NEW: MECHANIC / SERVICE ADVISOR
+    // ══════════════════════════════════════════════════════
+    // You confirmed: single fixed name for now, same on every
+    // invoice. Change this value any time — no other file needs
+    // editing. If you later want a per-bill mechanic, this is the
+    // single place a future enhancement would replace with a
+    // database-backed field.
+    public static final String MECHANIC_NAME = "Rahul";
+
+    // ══════════════════════════════════════════════════════
+    // NEW: AUTHORIZED SIGNATORY NAME
+    // ══════════════════════════════════════════════════════
+    // Printed above the "Authorized Signature" line on the PDF.
+    public static final String AUTHORIZED_SIGNATORY = GARAGE_NAME;
 }

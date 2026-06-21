@@ -27,6 +27,19 @@ public class Car {
 
     private String color;
 
+    // ── NEW: engineNumber ──────────────────────────────────────
+    // Maps to cars.engine_number (VARCHAR, nullable).
+    // Displayed on invoice Vehicle Information section.
+    // Optional field — existing cars will show "-" until filled.
+    private String engineNumber;
+
+    // ── NEW: registrationYear ──────────────────────────────────
+    // Maps to cars.registration_year (INT, nullable).
+    // "Year of registration" on the invoice — distinct from
+    // manufactureYear (a car can be manufactured one year and
+    // registered the next). Optional — shows "-" if not set.
+    private Integer registrationYear;
+
     private LocalDateTime createdAt;
 
     private String customerName;

@@ -21,6 +21,15 @@ public class CarRepository {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    // ─────────────────────────────────────────────────────────
+    // CAR ROW MAPPER
+    //
+    // CHANGED: now also reads engine_number and registration_year.
+    // Both are nullable columns (added via migration.sql), so
+    // existing cars created before this change will have NULL
+    // for both — Car.java fields simply stay null, and PdfService
+    // already displays "-" for null values. No crash anywhere.
+    // ─────────────────────────────────────────────────────────
     private static final RowMapper<Car> CAR_MAPPER = (rs, rowNum) -> {
 
         Car car = new Car();
@@ -40,6 +49,18 @@ public class CarRepository {
             car.setManufactureYear(year);
         }
 
+        // NEW: engine_number — plain nullable VARCHAR, no special handling needed
+        car.setEngineNumber(rs.getString("engine_number"));
+
+        // NEW: registration_year — nullable INT, same wasNull() pattern
+        // as manufacture_year above, to correctly distinguish "0" from "not set"
+        int regYear = rs.getInt("registration_year");
+        if (rs.wasNull()) {
+            car.setRegistrationYear(null);
+        } else {
+            car.setRegistrationYear(regYear);
+        }
+
         Timestamp ts = rs.getTimestamp("created_at");
 
         if (ts != null) {
@@ -54,7 +75,15 @@ public class CarRepository {
         return car;
     };
 
+    // ─────────────────────────────────────────────────────────
     // SAVE NEW CAR
+    //
+    // CHANGED: INSERT now includes engine_number and registration_year.
+    // Both are optional — if the create-car form never sends them,
+    // car.getEngineNumber() / car.getRegistrationYear() are simply
+    // null, and ps.setString()/setObject() correctly insert SQL NULL
+    // (matches the nullable column definition — no NOT NULL violation).
+    // ─────────────────────────────────────────────────────────
     public Long save(Car car) {
 
         String sql = """
@@ -65,9 +94,11 @@ public class CarRepository {
                     car_model,
                     brand,
                     manufacture_year,
-                    color
+                    color,
+                    engine_number,
+                    registration_year
                 )
-                VALUES (?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """;
 
         KeyHolder keyHolder = new GeneratedKeyHolder();
@@ -83,6 +114,12 @@ public class CarRepository {
             ps.setString(4, car.getBrand());
             ps.setObject(5, car.getManufactureYear());
             ps.setString(6, car.getColor());
+
+            // NEW: engine_number — setObject handles null safely
+            ps.setObject(7, car.getEngineNumber());
+
+            // NEW: registration_year — setObject handles null safely
+            ps.setObject(8, car.getRegistrationYear());
 
             return ps;
 

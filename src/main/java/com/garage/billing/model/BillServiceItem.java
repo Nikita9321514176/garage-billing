@@ -23,5 +23,12 @@ public class BillServiceItem {
 
     private BigDecimal amount;
 
+    // ── NEW: itemType ─────────────────────────────────────────
+    // "PART" or "LABOUR". Maps to bill_services.item_type
+    // (ENUM column, default 'LABOUR', added via migration.sql).
+    // Used by PdfService to split services into the Labour table
+    // and Parts table required by the new invoice design.
+    private String itemType;
+
     private Integer sortOrder;
 }
