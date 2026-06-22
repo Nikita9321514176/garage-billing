@@ -71,4 +71,12 @@ public class GarageConfig {
     // ══════════════════════════════════════════════════════
     // Printed above the "Authorized Signature" line on the PDF.
     public static final String AUTHORIZED_SIGNATORY = GARAGE_NAME;
+ // ══════════════════════════════════════════════════════
+    // NEW: AUTHORIZED SIGNATORY NAME
+    // ══════════════════════════════════════════════════════
+    // The actual person's name printed above "Authorized
+    // Signature / For The J Motors" on the PDF invoice.
+    // Change this any time the signatory changes — no other
+    // file needs editing.
+    public static final String AUTHORIZED_SIGNATORY_NAME = "Rahul Jaiswar";
 }

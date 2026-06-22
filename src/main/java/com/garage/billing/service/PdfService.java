@@ -11,8 +11,6 @@ import com.garage.billing.model.Car;
 import com.garage.billing.model.Payment;
 import com.garage.billing.repository.CarRepository;
 import com.garage.billing.util.AmountInWordsConverter;
-import com.garage.billing.util.GstCalculator;
-import com.garage.billing.util.GstCalculator.GstBreakdown;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -35,7 +33,7 @@ public class PdfService {
     @Autowired private CarRepository  carRepository;
 
     // ── COLORS — navy blue theme preserved exactly as before ──
-    private static final Color COLOR_DARK    = new Color(26,  26,  46);  // navy
+    private static final Color COLOR_DARK    = new Color(26,  26,  46);
     private static final Color COLOR_PRIMARY = new Color(13,  110, 253);
     private static final Color COLOR_SUCCESS = new Color(25,  135, 84);
     private static final Color COLOR_DANGER  = new Color(220, 53,  69);
@@ -47,8 +45,6 @@ public class PdfService {
     private static final Color COLOR_AMBER   = new Color(99,  56,  6);
 
     // ── FONTS ────────────────────────────────────────────────
-    // FONT_GARAGE_NAME now navy instead of gold-on-logo, since
-    // logo is removed entirely — clean text header instead.
     private static final Font FONT_GARAGE_NAME =
         new Font(Font.HELVETICA, 22, Font.BOLD, COLOR_DARK);
     private static final Font FONT_TAGLINE =
@@ -81,6 +77,8 @@ public class PdfService {
         new Font(Font.HELVETICA, 7, Font.NORMAL, COLOR_MUTED);
     private static final Font FONT_SIGNATURE_LABEL =
         new Font(Font.HELVETICA, 8, Font.NORMAL, COLOR_MUTED);
+    private static final Font FONT_SIGNATURE_NAME =
+        new Font(Font.HELVETICA, 9, Font.BOLD, COLOR_DARK);
 
     private static final DateTimeFormatter DATE_FMT  =
         DateTimeFormatter.ofPattern("dd MMM yyyy, hh:mm a");
@@ -97,9 +95,6 @@ public class PdfService {
         List<BillServiceItem> allItems = bill.getServices();
         if (allItems == null) allItems = List.of();
 
-        // ── Split services into LABOUR and PART lists ────────
-        // Existing services with no item_type (old rows) default
-        // to LABOUR via BillRepository's SERVICE_MAPPER fallback.
         List<BillServiceItem> labourItems = new ArrayList<>();
         List<BillServiceItem> partItems   = new ArrayList<>();
         for (BillServiceItem item : allItems) {
@@ -113,8 +108,6 @@ public class PdfService {
 
         List<Payment> payments = paymentService.getPaymentHistory(billId);
 
-        // Look up car for vehicle info section — engine number,
-        // registration year, brand. Falls back gracefully if not found.
         Car car = null;
         try {
             Optional<Car> carOpt = carRepository.findById(bill.getCarId());
@@ -153,7 +146,6 @@ public class PdfService {
     }
 
     // ── SECTION 1: HEADER ────────────────────────────────────
-    // NO LOGO — clean text header only, per requirement.
     private void buildHeader(Document doc, Bill bill)
             throws DocumentException {
 
@@ -162,7 +154,6 @@ public class PdfService {
         table.setWidths(new float[]{60f, 40f});
         table.setSpacingAfter(6f);
 
-        // ── LEFT: Garage Info (text only, no logo) ────────
         PdfPCell leftCell = new PdfPCell();
         leftCell.setBorder(Rectangle.NO_BORDER);
         leftCell.setPadding(0);
@@ -181,19 +172,13 @@ public class PdfService {
         leftCell.addElement(new Paragraph(
             "Ph: " + GarageConfig.PHONE, FONT_SMALL));
 
-        // GST number when configured; always show 18% GST applies
         if (GarageConfig.GST_NUMBER != null && !GarageConfig.GST_NUMBER.isEmpty()) {
             leftCell.addElement(new Paragraph(
                 "GSTIN: " + GarageConfig.GST_NUMBER, FONT_SMALL));
         }
-        leftCell.addElement(new Paragraph(
-            "GST @ " + GstCalculator.GST_RATE + "% (CGST "
-                + GstCalculator.CGST_RATE + "% + SGST "
-                + GstCalculator.SGST_RATE + "%)", FONT_SMALL));
 
         table.addCell(leftCell);
 
-        // ── RIGHT: Invoice Details ────────────────────────
         PdfPCell rightCell = new PdfPCell();
         rightCell.setBorder(Rectangle.NO_BORDER);
         rightCell.setPadding(0);
@@ -213,14 +198,12 @@ public class PdfService {
         dateP.setAlignment(Element.ALIGN_RIGHT);
         rightCell.addElement(dateP);
 
-        // Due Date
         String dueStr = bill.getDueDate() != null
             ? bill.getDueDate().format(DATE_ONLY) : "-";
         Paragraph dueP = new Paragraph("Due Date: " + dueStr, FONT_SMALL);
         dueP.setAlignment(Element.ALIGN_RIGHT);
         rightCell.addElement(dueP);
 
-        // Issue Date (same as bill date — kept distinct per spec wording)
         Paragraph issueP = new Paragraph("Issue Date: " + dateStr, FONT_SMALL);
         issueP.setAlignment(Element.ALIGN_RIGHT);
         rightCell.addElement(issueP);
@@ -243,6 +226,14 @@ public class PdfService {
     }
 
     // ── SECTION 3: CUSTOMER + VEHICLE INFO ───────────────────
+    //
+    // CHANGED: removed "Engine No" line entirely per request.
+    // Vehicle cell now shows only Reg. No, Model, Make/Brand,
+    // Color, and Year of Registration. The underlying
+    // car.getEngineNumber() data and DB column are NOT removed
+    // — only this PDF display line is removed, so the field
+    // remains available for any other future use without
+    // requiring a schema rollback.
     private void buildCustomerVehicleSection(Document doc, Bill bill, Car car)
             throws DocumentException {
 
@@ -252,7 +243,6 @@ public class PdfService {
         table.setSpacingBefore(4f);
         table.setSpacingAfter(8f);
 
-        // ── Customer cell ──────────────────────────────────
         PdfPCell custCell = new PdfPCell();
         custCell.setBorder(Rectangle.BOX);
         custCell.setBorderColor(COLOR_BORDER);
@@ -265,7 +255,6 @@ public class PdfService {
             "Phone: " + safe(bill.getCustomerPhone()), FONT_MUTED));
         table.addCell(custCell);
 
-        // ── Vehicle cell ───────────────────────────────────
         PdfPCell vehCell = new PdfPCell();
         vehCell.setBorder(Rectangle.BOX);
         vehCell.setBorderColor(COLOR_BORDER);
@@ -279,26 +268,21 @@ public class PdfService {
         vehCell.addElement(new Paragraph(
             "Model: " + safe(bill.getCarModel()), FONT_MUTED));
 
-        String brand    = car != null ? car.getBrand()           : null;
-        String engine   = car != null ? car.getEngineNumber()    : null;
-        Integer regYear  = car != null ? car.getRegistrationYear() : null;
-        String color     = car != null ? car.getColor()           : null;
+        String brand   = car != null ? car.getBrand()           : null;
+        Integer regYear = car != null ? car.getRegistrationYear() : null;
+        String color    = car != null ? car.getColor()           : null;
 
         vehCell.addElement(new Paragraph("Make/Brand: " + safe(brand), FONT_MUTED));
         vehCell.addElement(new Paragraph("Color: " + safe(color), FONT_MUTED));
         vehCell.addElement(new Paragraph(
             "Year of Registration: " + (regYear != null ? regYear.toString() : "-"), FONT_MUTED));
-        vehCell.addElement(new Paragraph("Engine No: " + safe(engine), FONT_MUTED));
+        // REMOVED: Engine No line — per request, no longer displayed on invoice.
 
         table.addCell(vehCell);
         doc.add(table);
     }
 
     // ── SECTION 4: JOB DETAILS ────────────────────────────────
-    // Job Card Number and Delivery Date are future-ready fields
-    // (not yet in DB) — shown as "-" since no data source exists.
-    // Service Advisor uses the fixed GarageConfig.MECHANIC_NAME
-    // you confirmed, same for every invoice.
     private void buildJobDetailsSection(Document doc) throws DocumentException {
 
         PdfPTable table = new PdfPTable(3);
@@ -324,8 +308,6 @@ public class PdfService {
     }
 
     // ── SECTION 5a: LABOUR TABLE ──────────────────────────────
-    // Existing bill services appear here automatically (since
-    // BillRepository defaults item_type to LABOUR for old rows).
     private void buildLabourTable(Document doc, List<BillServiceItem> labourItems)
             throws DocumentException {
 
@@ -351,8 +333,6 @@ public class PdfService {
             addDataCell(table, String.valueOf(i + 1),
                 FONT_MUTED, Element.ALIGN_CENTER, rowBg);
 
-            // Service name + description combined on one line
-            // to keep the table compact, matching reference style.
             String desc = item.getServiceName() != null ? item.getServiceName() : "-";
             if (item.getDescription() != null && !item.getDescription().isEmpty()) {
                 desc += " (" + item.getDescription() + ")";
@@ -367,10 +347,13 @@ public class PdfService {
     }
 
     // ── SECTION 5b: PARTS TABLE ───────────────────────────────
-    // Per your decision: shown with headers even when empty,
-    // since no PART items exist in the system yet. Future
-    // enhancement can populate Part No / Qty / Unit Price from
-    // a proper parts catalog without changing this table layout.
+    //
+    // CHANGED: removed the "Part No" column entirely per request.
+    // Table is now 4 columns instead of 5: Part Name, Qty,
+    // Unit Price, Amount. Column widths rebalanced to fill the
+    // freed-up space proportionally — Part Name gets the extra
+    // width since it's the most important identifying field
+    // once Part No is gone.
     private void buildPartsTable(Document doc, List<BillServiceItem> partItems)
             throws DocumentException {
 
@@ -378,12 +361,13 @@ public class PdfService {
         heading.setSpacingAfter(3f);
         doc.add(heading);
 
-        PdfPTable table = new PdfPTable(5);
+        PdfPTable table = new PdfPTable(4);
         table.setWidthPercentage(100);
-        table.setWidths(new float[]{14f, 32f, 12f, 18f, 24f});
+        // REMOVED: Part No column (was 5 columns: 14,32,12,18,24)
+        // NEW: 4 columns — Part Name gets the widened first slot
+        table.setWidths(new float[]{40f, 16f, 22f, 22f});
         table.setSpacingAfter(8f);
 
-        addHeaderCell(table, "Part No");
         addHeaderCell(table, "Part Name");
         addHeaderCell(table, "Qty");
         addHeaderCell(table, "Unit Price");
@@ -392,7 +376,7 @@ public class PdfService {
         if (partItems.isEmpty()) {
             PdfPCell emptyCell = new PdfPCell(
                 new Phrase("No parts used for this service", FONT_MUTED));
-            emptyCell.setColspan(5);
+            emptyCell.setColspan(4);
             emptyCell.setPadding(8f);
             emptyCell.setBorderColor(COLOR_BORDER);
             emptyCell.setHorizontalAlignment(Element.ALIGN_CENTER);
@@ -403,17 +387,20 @@ public class PdfService {
                 Color rowBg = alt ? COLOR_LIGHT : COLOR_WHITE;
                 alt = !alt;
 
-                // Part No and Qty not tracked in current schema —
-                // shown as "-" / "1" placeholder until a parts
-                // catalog feature is added. Part Name + Amount
-                // are real data from the existing bill_services row.
-                addDataCell(table, "-", FONT_MUTED, Element.ALIGN_CENTER, rowBg);
                 addDataCell(table,
                     item.getServiceName() != null ? item.getServiceName() : "-",
                     FONT_NORMAL, Element.ALIGN_LEFT, rowBg);
-                addDataCell(table, "1", FONT_MUTED, Element.ALIGN_CENTER, rowBg);
-                addDataCell(table, formatCurrency(item.getAmount()),
+
+                // Real qty now used (previously a "1" placeholder before
+                // qty/unitPrice fields existed on BillServiceItem)
+                String qtyStr = item.getQty() != null
+                    ? item.getQty().stripTrailingZeros().toPlainString()
+                    : "-";
+                addDataCell(table, qtyStr, FONT_MUTED, Element.ALIGN_CENTER, rowBg);
+
+                addDataCell(table, formatCurrency(item.getUnitPrice()),
                     FONT_MUTED, Element.ALIGN_RIGHT, rowBg);
+
                 addDataCell(table, formatCurrency(item.getAmount()),
                     FONT_NORMAL, Element.ALIGN_RIGHT, rowBg);
             }
@@ -423,25 +410,42 @@ public class PdfService {
     }
 
     // ── SECTION 6: TOTALS ─────────────────────────────────────
-    // Subtotal / Discount / Total Labour / Total Parts / GST /
-    // Grand Total / Amount Paid / Balance Due / Amount in Words
     private void buildTotalsSection(Document doc, Bill bill,
             List<BillServiceItem> labourItems, List<BillServiceItem> partItems)
             throws DocumentException {
 
-        // ── Compute Labour Total and Parts Total ─────────────
         BigDecimal labourTotal = sumAmounts(labourItems);
         BigDecimal partsTotal  = sumAmounts(partItems);
+        BigDecimal subtotal = labourTotal.add(partsTotal);
 
-        // GST breakdown — same logic as bill detail / invoice pages
-        GstBreakdown gst = billService.getGstBreakdown(bill);
-        BigDecimal subtotal = gst.getSubtotal();
-        BigDecimal discount = gst.getDiscount();
-        BigDecimal taxableAmount = gst.getTaxableAmount();
-        BigDecimal cgst = gst.getCgstAmount();
-        BigDecimal sgst = gst.getSgstAmount();
-        BigDecimal totalGst = gst.getTotalGstAmount();
-        BigDecimal displayedGrandTotal = gst.getGrandTotal();
+        BigDecimal discount = bill.getDiscountAmount() != null
+                ? bill.getDiscountAmount() : BigDecimal.ZERO;
+
+        BigDecimal taxableAmount = subtotal.subtract(discount);
+        if (taxableAmount.compareTo(BigDecimal.ZERO) < 0) {
+            taxableAmount = BigDecimal.ZERO;
+        }
+
+        boolean gstApplicable = GarageConfig.GST_NUMBER != null
+                && !GarageConfig.GST_NUMBER.isEmpty();
+
+        BigDecimal cgst = BigDecimal.ZERO;
+        BigDecimal sgst = BigDecimal.ZERO;
+        BigDecimal totalGst = BigDecimal.ZERO;
+
+        if (gstApplicable) {
+            cgst = taxableAmount
+                .multiply(GarageConfig.CGST_RATE)
+                .divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
+            sgst = taxableAmount
+                .multiply(GarageConfig.SGST_RATE)
+                .divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
+            totalGst = cgst.add(sgst);
+        }
+
+        BigDecimal exactGrandTotal = taxableAmount.add(totalGst);
+        BigDecimal roundedGrandTotal = exactGrandTotal.setScale(0, RoundingMode.HALF_UP);
+        BigDecimal roundOff = roundedGrandTotal.subtract(exactGrandTotal);
 
         PdfPTable wrapper = new PdfPTable(2);
         wrapper.setWidthPercentage(100);
@@ -474,30 +478,32 @@ public class PdfService {
                 "- " + formatCurrency(discount), discLabel, discValue);
         }
 
-        addTotalRow(totalsCell, "Taxable Amount",
-            formatCurrency(taxableAmount), FONT_NORMAL, FONT_NORMAL);
+        if (gstApplicable) {
+            addTotalRow(totalsCell,
+                "CGST @ " + GarageConfig.CGST_RATE + "%",
+                formatCurrency(cgst), FONT_MUTED, FONT_MUTED);
+            addTotalRow(totalsCell,
+                "SGST @ " + GarageConfig.SGST_RATE + "%",
+                formatCurrency(sgst), FONT_MUTED, FONT_MUTED);
+        } else {
+            addTotalRow(totalsCell, "GST", "Rs. 0.00", FONT_MUTED, FONT_MUTED);
+        }
 
-        Font gstLabelFont = new Font(Font.HELVETICA, 9, Font.BOLD, COLOR_DARK);
-        Font gstValueFont = new Font(Font.HELVETICA, 9, Font.BOLD, COLOR_DARK);
+        if (roundOff.compareTo(BigDecimal.ZERO) != 0) {
+            addTotalRow(totalsCell, "Round Off",
+                formatSignedCurrency(roundOff), FONT_MUTED, FONT_MUTED);
+        }
 
-        addTotalRow(totalsCell,
-            "CGST @ " + GstCalculator.CGST_RATE.stripTrailingZeros().toPlainString() + "%",
-            formatCurrency(cgst), gstLabelFont, gstValueFont);
-        addTotalRow(totalsCell,
-            "SGST @ " + GstCalculator.SGST_RATE.stripTrailingZeros().toPlainString() + "%",
-            formatCurrency(sgst), gstLabelFont, gstValueFont);
-        addTotalRow(totalsCell,
-            "Total GST @ " + GstCalculator.GST_RATE.stripTrailingZeros().toPlainString() + "%",
-            formatCurrency(totalGst), gstLabelFont, gstValueFont);
-
-        // Divider
         Paragraph sep = new Paragraph(" ",
             new Font(Font.HELVETICA, 3, Font.NORMAL, COLOR_BORDER));
         sep.setSpacingBefore(2f);
         sep.setSpacingAfter(2f);
         totalsCell.addElement(sep);
 
-        // Grand Total — matches BillService (tax-inclusive)
+        BigDecimal displayedGrandTotal = gstApplicable
+            ? roundedGrandTotal
+            : bill.getTotalAmount();
+
         addTotalRow(totalsCell, "Grand Total",
             formatCurrency(displayedGrandTotal),
             FONT_GRAND_TOTAL, FONT_GRAND_TOTAL);
@@ -522,7 +528,6 @@ public class PdfService {
         wrapper.addCell(totalsCell);
         doc.add(wrapper);
 
-        // ── Amount in Words ───────────────────────────────────
         Paragraph wordsLine = new Paragraph(
             "Amount in Words: " + AmountInWordsConverter.convert(displayedGrandTotal),
             FONT_WORDS);
@@ -587,48 +592,48 @@ public class PdfService {
         }
     }
 
-    // ── SECTION 9: AUTHORIZATION / SIGNATURES ─────────────────
+    // ── SECTION 9: AUTHORIZATION ──────────────────────────────
+    //
+    // CHANGED: Customer Signature block removed entirely per
+    // request. Only Authorized Signature remains, now full
+    // width (was 50/50 split table, now a single cell aligned
+    // left, matching the visual space the layout had before).
+    //
+    // CHANGED: Authorized Signature now prints the actual
+    // signatory NAME ("Rahul Jaiswar") above the "For The J
+    // Motors" line, instead of just the generic garage name
+    // label. GarageConfig.AUTHORIZED_SIGNATORY_NAME is the new
+    // constant holding this — change it there if the signatory
+    // ever changes, no other file needs editing.
     private void buildSignatureSection(Document doc) throws DocumentException {
 
-        PdfPTable table = new PdfPTable(2);
+        PdfPTable table = new PdfPTable(1);
         table.setWidthPercentage(100);
-        table.setWidths(new float[]{50f, 50f});
-        table.setSpacingBefore(20f);
+        table.setSpacingBefore(24f);
         table.setSpacingAfter(8f);
 
-        // Left: Authorized Signature
-        PdfPCell leftCell = new PdfPCell();
-        leftCell.setBorder(Rectangle.NO_BORDER);
-        leftCell.setPaddingTop(20f);
+        PdfPCell cell = new PdfPCell();
+        cell.setBorder(Rectangle.NO_BORDER);
+        cell.setPaddingTop(20f);
 
-        LineSeparator sigLine1 = new LineSeparator(0.5f, 60f, COLOR_MUTED, Element.ALIGN_LEFT, 0f);
-        leftCell.addElement(new Chunk(sigLine1));
-        Paragraph leftLabel = new Paragraph(
+        LineSeparator sigLine = new LineSeparator(0.5f, 60f, COLOR_MUTED, Element.ALIGN_LEFT, 0f);
+        cell.addElement(new Chunk(sigLine));
+
+        Paragraph nameLine = new Paragraph(GarageConfig.AUTHORIZED_SIGNATORY_NAME, FONT_SIGNATURE_NAME);
+        nameLine.setSpacingBefore(4f);
+        cell.addElement(nameLine);
+
+        Paragraph roleLine = new Paragraph(
             "Authorized Signature\nFor " + GarageConfig.AUTHORIZED_SIGNATORY,
             FONT_SIGNATURE_LABEL);
-        leftLabel.setSpacingBefore(3f);
-        leftCell.addElement(leftLabel);
-        table.addCell(leftCell);
+        roleLine.setSpacingBefore(2f);
+        cell.addElement(roleLine);
 
-        // Right: Customer Signature
-        PdfPCell rightCell = new PdfPCell();
-        rightCell.setBorder(Rectangle.NO_BORDER);
-        rightCell.setPaddingTop(20f);
-        rightCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
-
-        LineSeparator sigLine2 = new LineSeparator(0.5f, 60f, COLOR_MUTED, Element.ALIGN_RIGHT, 0f);
-        rightCell.addElement(new Chunk(sigLine2));
-        Paragraph rightLabel = new Paragraph("Customer Signature", FONT_SIGNATURE_LABEL);
-        rightLabel.setAlignment(Element.ALIGN_RIGHT);
-        rightLabel.setSpacingBefore(3f);
-        rightCell.addElement(rightLabel);
-        table.addCell(rightCell);
-
+        table.addCell(cell);
         doc.add(table);
     }
 
     // ── SECTION 10: FOOTER ────────────────────────────────────
-    // Footer completely replaced per spec — no "Generated by" line.
     private void buildFooter(Document doc) throws DocumentException {
         buildDivider(doc);
 
@@ -729,8 +734,6 @@ public class PdfService {
         return sign + "Rs. " + String.format("%,.2f", amount.abs());
     }
 
-    // Returns "-" instead of "null" for any missing field —
-    // satisfies the "never show null" requirement everywhere.
     private String safe(String value) {
         return (value != null && !value.trim().isEmpty()) ? value : "-";
     }
